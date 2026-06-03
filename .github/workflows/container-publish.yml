@@ -1,0 +1,52 @@
+name: Build and Push Container image to GitHub Container Registry
+
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    # Runs at 02:00 UTC every day.
+    - cron: "0 2 * * *"
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Podman and QEMU for multi-arch builds
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman qemu-user-static
+
+      - name: Log in to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build Container image (linux/amd64)
+        run: |
+          podman build --platform linux/amd64 \
+            -t ghcr.io/whatwedo/claude-code-container:latest-amd64 .
+
+      - name: Build Container image (linux/arm64 for macOS)
+        run: |
+          podman build --platform linux/arm64 \
+            -t ghcr.io/whatwedo/claude-code-container:latest-arm64 .
+
+      - name: Push platform images
+        run: |
+          podman push ghcr.io/whatwedo/claude-code-container:latest-amd64
+          podman push ghcr.io/whatwedo/claude-code-container:latest-arm64
+
+      - name: Create and push multi-arch manifest
+        run: |
+          podman manifest create ghcr.io/whatwedo/claude-code-container:latest
+          podman manifest add ghcr.io/whatwedo/claude-code-container:latest \
+            ghcr.io/whatwedo/claude-code-container:latest-amd64
+          podman manifest add ghcr.io/whatwedo/claude-code-container:latest \
+            ghcr.io/whatwedo/claude-code-container:latest-arm64
+          podman manifest push ghcr.io/whatwedo/claude-code-container:latest
