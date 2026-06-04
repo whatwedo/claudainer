@@ -3,12 +3,24 @@
 # Provides the claudainer command in your shell.
 
 _CLAUDAINER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_CLAUDAINER_BASE_URL="https://raw.githubusercontent.com/whatwedo/claudainer/refs/heads/main"
+
+_claudainer_source() {
+  local file="$1"
+  if [ -f "$_CLAUDAINER_DIR/$file" ]; then
+    source "$_CLAUDAINER_DIR/$file"
+  else
+    source <(curl -fsSL "$_CLAUDAINER_BASE_URL/$file")
+  fi
+}
 
 case "$(uname -s)" in
-  Darwin) source "$_CLAUDAINER_DIR/source.macos.sh" ;;
-  Linux)  source "$_CLAUDAINER_DIR/source.linux.sh" ;;
+  Darwin) _claudainer_source source.macos.sh ;;
+  Linux)  _claudainer_source source.linux.sh ;;
   *)      echo "claudainer: unsupported OS: $(uname -s)" >&2 ;;
 esac
+
+unset -f _claudainer_source
 
 claudainer() {
   local pull_flag=""
@@ -40,4 +52,4 @@ claudainer() {
     claude "${claude_args[@]}"
 }
 
-unset _CLAUDAINER_DIR
+unset _CLAUDAINER_DIR _CLAUDAINER_BASE_URL
