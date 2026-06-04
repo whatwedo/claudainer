@@ -7,7 +7,7 @@ Container image that runs [Claude Code](https://claude.ai/code) as an isolated, 
 - `node:22-slim` base
 - `node` user renamed to `developer` (UID 1000) with home at `/home/developer`
 - Claude Code installed globally via npm
-- Docker CLI installed (for `--docker` flag support)
+- Docker CLI installed (for `--docker-socket` flag support)
 - `/workspace` as the working directory
 
 ## Setup
@@ -33,7 +33,7 @@ Run `claudainer` from any project directory. Your current directory is mounted a
 | Flag | Description |
 |------|-------------|
 | `--pull` | Always pull the latest image before running |
-| `--docker` | Mount the Docker socket into the container |
+| `--docker-socket`, `--ds` | Mount the Docker socket into the container |
 
 ### Examples
 
@@ -45,7 +45,7 @@ claudainer
 claudainer --dangerously-skip-permissions
 
 # Mount Docker socket (e.g. for Docker-aware tasks)
-claudainer --docker
+claudainer --docker-socket
 
 # Pull latest image and start
 claudainer --pull
@@ -55,8 +55,8 @@ claudainer --pull
 
 `source.sh` detects your OS and sources the appropriate platform file:
 
-- **Linux** — uses `podman`, maps your user ID to UID 1000 inside the container via `--userns=keep-id`. By default mounts the Podman socket; use `--docker` to mount the Docker socket instead.
-- **macOS** — uses `docker`, runs as UID 1000 inside the container. Use `--docker` to mount the Docker socket.
+- **Linux** — uses `podman`, maps your user ID to UID 1000 inside the container via `--userns=keep-id`. Use `--docker-socket` to mount the Docker socket.
+- **macOS** — uses `docker`, runs as UID 1000 inside the container. Use `--docker-socket` to mount the Docker socket.
 
 ## Build
 

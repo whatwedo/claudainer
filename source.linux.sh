@@ -9,7 +9,6 @@ _claudainer_setup() {
   if [ "$docker_flag" = true ]; then
     _CLAUDAINER_SOCKET_ARGS=(-v /var/run/docker.sock:/var/run/docker.sock)
   else
-    systemctl --user start podman.socket
-    _CLAUDAINER_SOCKET_ARGS=(-v "/var/run/user/$(id -u)/podman/podman.sock:/var/run/user/1000/podman/podman.sock")
+    _CLAUDAINER_SOCKET_ARGS=()
   fi
 }

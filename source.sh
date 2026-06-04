@@ -18,7 +18,7 @@ claudainer() {
   while [ $# -gt 0 ]; do
     case "$1" in
       --pull)   pull_flag="--pull=always"; shift ;;
-      --docker) docker_flag=true; shift ;;
+      --docker-socket|--ds) docker_flag=true; shift ;;
       --)       shift; claude_args+=("$@"); break ;;
       *)        claude_args+=("$1"); shift ;;
     esac
