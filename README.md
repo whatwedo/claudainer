@@ -60,5 +60,5 @@ Both platforms use `podman` and map your user ID to UID 1000 inside the containe
 ## Build
 
 ```bash
-docker build -t claudainer:local .
+podman build -t claudainer:local .
 ```
