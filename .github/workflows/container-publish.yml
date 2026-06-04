@@ -30,23 +30,23 @@ jobs:
       - name: Build Container image (linux/amd64)
         run: |
           podman build --platform linux/amd64 \
-            -t ghcr.io/whatwedo/claude-code-container:latest-amd64 .
+            -t ghcr.io/whatwedo/claudainer:latest-amd64 .
 
       - name: Build Container image (linux/arm64 for macOS)
         run: |
           podman build --platform linux/arm64 \
-            -t ghcr.io/whatwedo/claude-code-container:latest-arm64 .
+            -t ghcr.io/whatwedo/claudainer:latest-arm64 .
 
       - name: Push platform images
         run: |
-          podman push ghcr.io/whatwedo/claude-code-container:latest-amd64
-          podman push ghcr.io/whatwedo/claude-code-container:latest-arm64
+          podman push ghcr.io/whatwedo/claudainer:latest-amd64
+          podman push ghcr.io/whatwedo/claudainer:latest-arm64
 
       - name: Create and push multi-arch manifest
         run: |
-          podman manifest create ghcr.io/whatwedo/claude-code-container:latest
-          podman manifest add ghcr.io/whatwedo/claude-code-container:latest \
-            ghcr.io/whatwedo/claude-code-container:latest-amd64
-          podman manifest add ghcr.io/whatwedo/claude-code-container:latest \
-            ghcr.io/whatwedo/claude-code-container:latest-arm64
-          podman manifest push ghcr.io/whatwedo/claude-code-container:latest
+          podman manifest create ghcr.io/whatwedo/claudainer:latest
+          podman manifest add ghcr.io/whatwedo/claudainer:latest \
+            ghcr.io/whatwedo/claudainer:latest-amd64
+          podman manifest add ghcr.io/whatwedo/claudainer:latest \
+            ghcr.io/whatwedo/claudainer:latest-arm64
+          podman manifest push ghcr.io/whatwedo/claudainer:latest

@@ -1,4 +1,4 @@
-# claude-code-container
+# Claudainer
 
 Docker image that runs [Claude Code](https://claude.ai/code) as an isolated, per-project agent. Intended for use with [dde](https://github.com/whatwedo/dde) via `dde project:claude`, but works standalone too.
 
@@ -12,12 +12,8 @@ Docker image that runs [Claude Code](https://claude.ai/code) as an isolated, per
 ## Build
 
 ```bash
-docker build -t dde-claude:local .
+docker build -t claudainer:local .
 ```
-
-## Usage with dde
-
-Once built, `dde project:claude` (or `dde claude`) picks up the image automatically. See the [dde Claude Code guide](https://github.com/whatwedo/dde/blob/v2/docs/guides/claude-code.md) for full setup instructions.
 
 ## Standalone usage
 
@@ -28,7 +24,7 @@ docker run --rm -it \
   -v ~/.claude.json:/home/developer/.claude.json \
   -v "$(pwd)":/workspace \
   -e HOME=/home/developer \
-  dde-claude:local \
+  ghcr.io/whatwedo/claudainer \
   claude
 ```
 
