@@ -55,7 +55,7 @@ claudainer --pull
 
 `source.sh` detects your OS and sources the appropriate platform file:
 
-Both platforms use `podman` and map your user ID to UID 1000 inside the container via `--userns=keep-id`. Use `--docker-socket` to mount the Docker socket.
+The platform file detects the available container runtime, preferring `podman` over `docker`. With `podman` your user ID is mapped to UID 1000 inside the container via `--userns=keep-id`; with `docker` the container runs as `--user 1000:1000`. Use `--docker-socket` to mount the Docker socket.
 
 ## Build
 
