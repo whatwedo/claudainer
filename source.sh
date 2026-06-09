@@ -119,6 +119,7 @@ claudainer() {
     "${git_config_args[@]}" \
     -v "$(pwd)":/workspace \
     -e HOME=/home/developer \
+    -e TERM=xterm-256color \
     ghcr.io/whatwedo/claudainer:latest \
     "${_CLAUDAINER_CMD[@]}"
 }
