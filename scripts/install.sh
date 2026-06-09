@@ -9,6 +9,10 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   git \
   gnupg
 
+# Node.js 22
+curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends nodejs
+
 # Docker CLI (for --docker flag support)
 install -m 0755 -d /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
