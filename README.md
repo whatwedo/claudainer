@@ -59,6 +59,26 @@ claudainer --shell
 claudainer --git-config
 ```
 
+## Proxy
+
+Every `claudainer` run automatically routes outgoing traffic through a Squid proxy container (`claudainer-proxy`). The proxy is started on first use and reused across invocations — you don't need to do anything to enable it.
+
+This makes it straightforward to add URL allow/block lists in a future step by editing `proxy/squid.conf`:
+
+```
+# Allow only specific hosts (example — not active by default)
+acl allowed_sites dstdomain .anthropic.com .github.com
+http_access allow CONNECT allowed_sites
+http_access allow allowed_sites
+http_access deny all
+```
+
+To stop and remove the proxy container and its network:
+
+```bash
+claudainer-proxy-stop
+```
+
 ## How it works
 
 `source.sh` detects your OS and sources the appropriate platform file:

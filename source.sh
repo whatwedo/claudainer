@@ -22,6 +22,45 @@ esac
 
 unset -f _claudainer_source
 
+_claudainer_proxy_setup() {
+  local network="claudainer-net"
+  local container="claudainer-proxy"
+  local proxy_image="ghcr.io/whatwedo/claudainer-proxy:latest"
+
+  "$_CLAUDAINER_RUNTIME" network inspect "$network" >/dev/null 2>&1 \
+    || "$_CLAUDAINER_RUNTIME" network create "$network"
+
+  if ! "$_CLAUDAINER_RUNTIME" inspect "$container" >/dev/null 2>&1; then
+    "$_CLAUDAINER_RUNTIME" run -d --name "$container" \
+      --network "$network" \
+      "$proxy_image"
+  fi
+
+  _CLAUDAINER_NETWORK_ARGS=(--network "$network")
+  _CLAUDAINER_PROXY_ARGS=(
+    -e HTTP_PROXY=http://${container}:3128
+    -e HTTPS_PROXY=http://${container}:3128
+    -e NO_PROXY=localhost,127.0.0.1
+  )
+}
+
+claudainer-proxy-stop() {
+  local network="claudainer-net"
+  local container="claudainer-proxy"
+  local runtime
+  if command -v podman >/dev/null 2>&1; then
+    runtime=podman
+  elif command -v docker >/dev/null 2>&1; then
+    runtime=docker
+  else
+    echo "claudainer-proxy-stop: neither podman nor docker found in PATH" >&2
+    return 1
+  fi
+
+  "$runtime" stop "$container" 2>/dev/null && "$runtime" rm "$container" 2>/dev/null || true
+  "$runtime" network rm "$network" 2>/dev/null || true
+}
+
 claudainer() {
   local pull_flag=""
   local docker_flag=false
@@ -44,6 +83,7 @@ claudainer() {
   mkdir -p ~/.claude
 
   _claudainer_setup "$docker_flag" || return 1
+  _claudainer_proxy_setup || return 1
 
   local _CLAUDAINER_CMD=()
   if [ "$shell_flag" = true ]; then
@@ -71,6 +111,8 @@ claudainer() {
   "$_CLAUDAINER_RUNTIME" run --rm -it $pull_flag \
     "${_CLAUDAINER_SOCKET_ARGS[@]}" \
     "${_CLAUDAINER_USER_ARGS[@]}" \
+    "${_CLAUDAINER_NETWORK_ARGS[@]}" \
+    "${_CLAUDAINER_PROXY_ARGS[@]}" \
     -v ~/.claude:/home/developer/.claude \
     -v ~/.claude.json:/home/developer/.claude.json \
     "${host_home_args[@]}" \

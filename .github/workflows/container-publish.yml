@@ -50,3 +50,45 @@ jobs:
           podman manifest add ghcr.io/whatwedo/claudainer:latest \
             ghcr.io/whatwedo/claudainer:latest-arm64
           podman manifest push ghcr.io/whatwedo/claudainer:latest
+
+  build-and-push-proxy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Podman and QEMU for multi-arch builds
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman qemu-user-static
+
+      - name: Log in to GitHub Container Registry
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build proxy image (linux/amd64)
+        run: |
+          podman build --platform linux/amd64 \
+            -t ghcr.io/whatwedo/claudainer-proxy:latest-amd64 proxy/
+
+      - name: Build proxy image (linux/arm64)
+        run: |
+          podman build --platform linux/arm64 \
+            -t ghcr.io/whatwedo/claudainer-proxy:latest-arm64 proxy/
+
+      - name: Push proxy platform images
+        run: |
+          podman push ghcr.io/whatwedo/claudainer-proxy:latest-amd64
+          podman push ghcr.io/whatwedo/claudainer-proxy:latest-arm64
+
+      - name: Create and push proxy multi-arch manifest
+        run: |
+          podman manifest create ghcr.io/whatwedo/claudainer-proxy:latest
+          podman manifest add ghcr.io/whatwedo/claudainer-proxy:latest \
+            ghcr.io/whatwedo/claudainer-proxy:latest-amd64
+          podman manifest add ghcr.io/whatwedo/claudainer-proxy:latest \
+            ghcr.io/whatwedo/claudainer-proxy:latest-arm64
+          podman manifest push ghcr.io/whatwedo/claudainer-proxy:latest
