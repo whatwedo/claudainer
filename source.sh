@@ -26,6 +26,7 @@ claudainer() {
   local pull_flag=""
   local docker_flag=false
   local shell_flag=false
+  local git_config_flag=false
   local claude_args=()
 
   while [ $# -gt 0 ]; do
@@ -33,6 +34,7 @@ claudainer() {
       --pull)   pull_flag="--pull=always"; shift ;;
       --docker-socket|--ds) docker_flag=true; shift ;;
       --shell)  shell_flag=true; shift ;;
+      --git-config|--gc) git_config_flag=true; shift ;;
       --)       shift; claude_args+=("$@"); break ;;
       *)        claude_args+=("$1"); shift ;;
     esac
@@ -60,12 +62,19 @@ claudainer() {
     )
   fi
 
+  local git_config_args=()
+  if [ "$git_config_flag" = true ]; then
+    [ -f ~/.gitconfig ] && git_config_args+=(-v ~/.gitconfig:/home/developer/.gitconfig:ro)
+    [ -d ~/.config/git ] && git_config_args+=(-v ~/.config/git:/home/developer/.config/git:ro)
+  fi
+
   "$_CLAUDAINER_RUNTIME" run --rm -it $pull_flag \
     "${_CLAUDAINER_SOCKET_ARGS[@]}" \
     "${_CLAUDAINER_USER_ARGS[@]}" \
     -v ~/.claude:/home/developer/.claude \
     -v ~/.claude.json:/home/developer/.claude.json \
     "${host_home_args[@]}" \
+    "${git_config_args[@]}" \
     -v "$(pwd)":/workspace \
     -e HOME=/home/developer \
     ghcr.io/whatwedo/claudainer:latest \

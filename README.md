@@ -35,6 +35,7 @@ Run `claudainer` from any project directory. Your current directory is mounted a
 | `--pull` | Always pull the latest image before running |
 | `--docker-socket`, `--ds` | Mount the Docker socket into the container |
 | `--shell` | Start a bash shell instead of Claude Code |
+| `--git-config`, `--gc` | Mount `~/.gitconfig` and `~/.config/git/` (read-only) into the container |
 
 ### Examples
 
@@ -53,6 +54,9 @@ claudainer --pull
 
 # Open a bash shell in the container (without starting Claude Code)
 claudainer --shell
+
+# Mount git config so git identity/settings are available inside the container
+claudainer --git-config
 ```
 
 ## How it works
