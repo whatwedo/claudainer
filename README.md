@@ -4,8 +4,8 @@ Container image that runs [Claude Code](https://claude.ai/code) as an isolated, 
 
 ## What's inside
 
-- `node:22-slim` base
-- `node` user renamed to `developer` (UID 1000) with home at `/home/developer`
+- `debian:stable-slim` base
+- user `developer` (UID 1000) with home at `/home/developer`
 - Claude Code installed globally via npm
 - Docker CLI installed (for `--docker-socket` flag support)
 - `/workspace` as the working directory
