@@ -39,13 +39,24 @@ claudainer() {
   touch ~/.claude.json 2>/dev/null || true
   mkdir -p ~/.claude
 
-  _claudainer_setup "$docker_flag"
+  _claudainer_setup "$docker_flag" || return 1
+
+  # Mirror ~/.claude at the host's absolute home path inside the container too,
+  # so absolute paths baked into the config (e.g. hook commands) resolve.
+  local host_home_args=()
+  if [ -n "$HOME" ] && [ "$HOME" != "/home/developer" ]; then
+    host_home_args=(
+      -v ~/.claude:"$HOME/.claude"
+      -v ~/.claude.json:"$HOME/.claude.json"
+    )
+  fi
 
   "$_CLAUDAINER_RUNTIME" run --rm -it $pull_flag \
     "${_CLAUDAINER_SOCKET_ARGS[@]}" \
     "${_CLAUDAINER_USER_ARGS[@]}" \
     -v ~/.claude:/home/developer/.claude \
     -v ~/.claude.json:/home/developer/.claude.json \
+    "${host_home_args[@]}" \
     -v "$(pwd)":/workspace \
     -e HOME=/home/developer \
     ghcr.io/whatwedo/claudainer:latest \
