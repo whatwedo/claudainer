@@ -25,12 +25,14 @@ unset -f _claudainer_source
 claudainer() {
   local pull_flag=""
   local docker_flag=false
+  local shell_flag=false
   local claude_args=()
 
   while [ $# -gt 0 ]; do
     case "$1" in
       --pull)   pull_flag="--pull=always"; shift ;;
       --docker-socket|--ds) docker_flag=true; shift ;;
+      --shell)  shell_flag=true; shift ;;
       --)       shift; claude_args+=("$@"); break ;;
       *)        claude_args+=("$1"); shift ;;
     esac
@@ -40,6 +42,13 @@ claudainer() {
   mkdir -p ~/.claude
 
   _claudainer_setup "$docker_flag" || return 1
+
+  local _CLAUDAINER_CMD=()
+  if [ "$shell_flag" = true ]; then
+    _CLAUDAINER_CMD=(bash)
+  else
+    _CLAUDAINER_CMD=(claude "${claude_args[@]}")
+  fi
 
   # Mirror ~/.claude at the host's absolute home path inside the container too,
   # so absolute paths baked into the config (e.g. hook commands) resolve.
@@ -60,7 +69,7 @@ claudainer() {
     -v "$(pwd)":/workspace \
     -e HOME=/home/developer \
     ghcr.io/whatwedo/claudainer:latest \
-    claude "${claude_args[@]}"
+    "${_CLAUDAINER_CMD[@]}"
 }
 
 unset _CLAUDAINER_DIR _CLAUDAINER_BASE_URL

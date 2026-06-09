@@ -34,6 +34,7 @@ Run `claudainer` from any project directory. Your current directory is mounted a
 |------|-------------|
 | `--pull` | Always pull the latest image before running |
 | `--docker-socket`, `--ds` | Mount the Docker socket into the container |
+| `--shell` | Start a bash shell instead of Claude Code |
 
 ### Examples
 
@@ -49,6 +50,9 @@ claudainer --docker-socket
 
 # Pull latest image and start
 claudainer --pull
+
+# Open a bash shell in the container (without starting Claude Code)
+claudainer --shell
 ```
 
 ## How it works
