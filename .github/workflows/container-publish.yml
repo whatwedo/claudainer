@@ -32,6 +32,18 @@ jobs:
           podman build --platform linux/amd64 \
             -t ghcr.io/whatwedo/claudainer:latest-amd64 .
 
+      - name: Install container-structure-test
+        run: |
+          curl -LO https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64
+          chmod +x container-structure-test-linux-amd64
+          sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
+
+      - name: Test claudainer image structure
+        run: |
+          container-structure-test test \
+            --image ghcr.io/whatwedo/claudainer:latest-amd64 \
+            --config tests/cst/claudainer.yaml
+
       - name: Build Container image (linux/arm64 for macOS)
         run: |
           podman build --platform linux/arm64 \
@@ -73,6 +85,18 @@ jobs:
         run: |
           podman build --platform linux/amd64 \
             -t ghcr.io/whatwedo/claudainer-proxy:latest-amd64 proxy/
+
+      - name: Install container-structure-test
+        run: |
+          curl -LO https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64
+          chmod +x container-structure-test-linux-amd64
+          sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
+
+      - name: Test proxy image structure
+        run: |
+          container-structure-test test \
+            --image ghcr.io/whatwedo/claudainer-proxy:latest-amd64 \
+            --config tests/cst/proxy.yaml
 
       - name: Build proxy image (linux/arm64)
         run: |

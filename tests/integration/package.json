@@ -1,0 +1,11 @@
+{
+  "name": "claudainer-integration-tests",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test --test-timeout=120000"
+  },
+  "devDependencies": {
+    "testcontainers": "^10.0.0"
+  }
+}

@@ -1,0 +1,16 @@
+schemaVersion: '2.0.0'
+
+commandTests:
+  - name: "squid is installed"
+    command: "squid"
+    args: ["-v"]
+    exitCode: 0
+
+fileExistenceTests:
+  - name: "squid binary exists"
+    path: "/usr/sbin/squid"
+    shouldExist: true
+
+  - name: "squid config exists"
+    path: "/etc/squid/squid.conf"
+    shouldExist: true
