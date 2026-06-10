@@ -85,6 +85,32 @@ claudainer-proxy-stop
 
 The platform file detects the available container runtime, preferring `podman` over `docker`. With `podman` your user ID is mapped to UID 1000 inside the container via `--userns=keep-id`; with `docker` the container runs as `--user 1000:1000`. Use `--docker-socket` to mount the Docker socket.
 
+## Testing
+
+**Shell tests** (no container required):
+```bash
+npm install -g bats
+bats tests/bats/
+```
+
+**Image structure tests** (requires a built image):
+```bash
+# Download container-structure-test once
+curl -LO https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64
+chmod +x container-structure-test-linux-amd64 && sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
+
+podman build -t claudainer:local .
+container-structure-test test --image claudainer:local --config tests/cst/claudainer.yaml
+```
+
+**Integration tests** (requires Docker and a published or locally-built image):
+```bash
+cd tests/integration && npm install
+CLAUDAINER_IMAGE=claudainer:local npm test
+```
+
+Set `SKIP_NETWORK_TESTS=1` to skip the proxy connectivity test when running offline.
+
 ## Build
 
 ```bash
