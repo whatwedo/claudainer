@@ -34,9 +34,13 @@ jobs:
 
       - name: Install container-structure-test
         run: |
-          curl -LO https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64
-          chmod +x container-structure-test-linux-amd64
-          sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
+          VERSION=v1.22.1
+          BASE=https://github.com/GoogleContainerTools/container-structure-test/releases/download/${VERSION}
+          curl -fsSL "${BASE}/container-structure-test-linux-amd64" -o container-structure-test
+          curl -fsSL "${BASE}/container-structure-test-linux-amd64.sha256" -o container-structure-test.sha256
+          echo "$(cat container-structure-test.sha256)  container-structure-test" | sha256sum -c -
+          chmod +x container-structure-test
+          sudo mv container-structure-test /usr/local/bin/container-structure-test
 
       - name: Test claudainer image structure
         run: |
@@ -88,9 +92,13 @@ jobs:
 
       - name: Install container-structure-test
         run: |
-          curl -LO https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64
-          chmod +x container-structure-test-linux-amd64
-          sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
+          VERSION=v1.22.1
+          BASE=https://github.com/GoogleContainerTools/container-structure-test/releases/download/${VERSION}
+          curl -fsSL "${BASE}/container-structure-test-linux-amd64" -o container-structure-test
+          curl -fsSL "${BASE}/container-structure-test-linux-amd64.sha256" -o container-structure-test.sha256
+          echo "$(cat container-structure-test.sha256)  container-structure-test" | sha256sum -c -
+          chmod +x container-structure-test
+          sudo mv container-structure-test /usr/local/bin/container-structure-test
 
       - name: Test proxy image structure
         run: |

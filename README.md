@@ -87,33 +87,7 @@ The platform file detects the available container runtime, preferring `podman` o
 
 ## Testing
 
-**Shell tests** (no container required):
-```bash
-# install bats (pick one)
-sudo apt-get install -y bats    # Debian/Ubuntu
-npm install -g bats             # npm
-brew install bats-core          # macOS
-
-bats tests/bats/
-```
-
-**Image structure tests** (requires a built image):
-```bash
-# Download container-structure-test once
-curl -LO https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64
-chmod +x container-structure-test-linux-amd64 && sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
-
-podman build -t claudainer:local .
-container-structure-test test --image claudainer:local --config tests/cst/claudainer.yaml
-```
-
-**Integration tests** (requires Docker and a published or locally-built image):
-```bash
-cd tests/integration && npm install
-CLAUDAINER_IMAGE=claudainer:local npm test
-```
-
-Set `SKIP_NETWORK_TESTS=1` to skip the proxy connectivity test when running offline.
+See [tests/README.md](tests/README.md).
 
 ## Build
 
