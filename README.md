@@ -89,7 +89,11 @@ The platform file detects the available container runtime, preferring `podman` o
 
 **Shell tests** (no container required):
 ```bash
-npm install -g bats
+# install bats (pick one)
+sudo apt-get install -y bats    # Debian/Ubuntu
+npm install -g bats             # npm
+brew install bats-core          # macOS
+
 bats tests/bats/
 ```
 
