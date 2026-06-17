@@ -40,15 +40,13 @@ Tests the shell script logic in `source.sh` and `source.linux.sh` — runtime de
 - `proxy.bats` — `_claudainer_proxy_setup` and `claudainer-proxy-stop`: network/container lifecycle, error handling
 - `claudainer.bats` — `claudainer()` flag parsing: `--pull`, `--shell`, `--docker-socket`, `--git-config`, passthrough args
 
-## Image structure tests (container-structure-test)
+## Image structure tests
 
-Validates the built image artifact — installed binaries, working directory, user, environment variables. Runs after building, before push.
+Validates the built image artifact — installed binaries, working directory, user, environment variables. Runs after building, before push. Implemented as `podman run` / `docker run` assertions in `scripts/test.sh`; the yaml files in `tests/cst/` serve as reference documentation for what is tested.
 
-The CST binary is downloaded and cached inside a local helper image (`claudainer-cst:local`) on first use — no host install needed.
+**What's covered (`claudainer`):** node v22, claude/docker/git/curl on PATH, user `developer`, workdir `/workspace`, `CLAUDE_CODE_DISABLE_AUTOUPDATER=1`, home and workspace dirs exist
 
-**What's covered (`claudainer.yaml`):** node v22, claude/docker/git/curl on PATH, user `developer`, workdir `/workspace`, `CLAUDE_CODE_DISABLE_AUTOUPDATER=1`
-
-**What's covered (`proxy.yaml`):** squid binary and config file present
+**What's covered (`proxy`):** squid binary present and config file exists
 
 ## Integration tests (Testcontainers)
 
