@@ -74,12 +74,17 @@ run_cst() {
 
 run_integration() {
   log "Running integration tests..."
+  local socket_gid
+  socket_gid="$(stat -c '%g' /var/run/docker.sock)"
   docker run --rm \
     -v "$REPO_ROOT/tests/integration:/app" \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -w /app \
     --user "$(id -u):$(id -g)" \
+    --group-add "$socket_gid" \
     -e HOME=/tmp \
+    -e DOCKER_HOST=unix:///var/run/docker.sock \
+    -e TESTCONTAINERS_RYUK_DISABLED=true \
     -e "CLAUDAINER_IMAGE=${CLAUDAINER_IMAGE}" \
     -e "CLAUDAINER_PROXY_IMAGE=${PROXY_IMAGE}" \
     docker.io/library/node:22 \
