@@ -32,8 +32,8 @@ Validates the built image artifact — installed binaries, working directory, us
 VERSION=v1.22.1  # check https://github.com/GoogleContainerTools/container-structure-test/releases
 BASE=https://github.com/GoogleContainerTools/container-structure-test/releases/download/${VERSION}
 curl -fsSL "${BASE}/container-structure-test-linux-amd64" -o container-structure-test
-curl -fsSL "${BASE}/container-structure-test-linux-amd64.sha256" -o container-structure-test.sha256
-echo "$(cat container-structure-test.sha256)  container-structure-test" | sha256sum -c -
+curl -fsSL "${BASE}/checksums.txt" -o checksums.txt
+grep "container-structure-test-linux-amd64" checksums.txt | sed 's/container-structure-test-linux-amd64/container-structure-test/' | sha256sum -c -
 chmod +x container-structure-test && sudo mv container-structure-test /usr/local/bin/container-structure-test
 ```
 
