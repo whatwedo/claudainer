@@ -31,7 +31,7 @@ _claudainer_proxy_setup() {
     || "$_CLAUDAINER_RUNTIME" network create "$network"
 
   if ! "$_CLAUDAINER_RUNTIME" inspect "$container" >/dev/null 2>&1; then
-    "$_CLAUDAINER_RUNTIME" run -d --name "$container" \
+    "$_CLAUDAINER_RUNTIME" run -d --rm --name "$container" \
       --network "$network" \
       "$proxy_image"
   fi

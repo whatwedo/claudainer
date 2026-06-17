@@ -60,10 +60,17 @@ teardown() {
   assert_call_contains "create"
 }
 
-@test "starts proxy container when it does not exist" {
+@test "starts proxy container with --rm when it does not exist" {
   _claudainer_proxy_setup
   assert_call_contains "run"
+  assert_call_contains "--rm"
   assert_call_contains "claudainer-proxy"
+}
+
+@test "does not run proxy container when already running" {
+  make_runtime_stub podman running
+  _claudainer_proxy_setup
+  assert_call_not_contains "run"
 }
 
 # --- claudainer-proxy-stop ---

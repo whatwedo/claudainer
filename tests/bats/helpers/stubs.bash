@@ -23,19 +23,28 @@ make_stub() {
   chmod +x "$STUB_DIR/$1"
 }
 
-# make_runtime_stub <name>
-# Creates a container-runtime stub that:
-#   - records every call as newline-separated args to $CALLS_FILE
-#   - returns 1 for "network inspect" and "inspect" (simulates missing resources)
-#   - returns 0 for everything else
+# make_runtime_stub <name> [container_state]
+# Creates a container-runtime stub that records every call as newline-separated
+# args to $CALLS_FILE. container_state controls what `inspect` returns:
+#   absent  (default) — inspect exits 1, simulating a missing container
+#   running           — inspect exits 0, simulating a running container
+# Network inspect always returns 1 (missing), everything else exits 0.
 make_runtime_stub() {
   local name="$1"
+  local container_state="${2:-absent}"
+
+  local inspect_body
+  case "$container_state" in
+    running) inspect_body='exit 0' ;;
+    *)       inspect_body='exit 1' ;;
+  esac
+
   cat > "$STUB_DIR/$name" <<STUBEOF
 #!/usr/bin/env bash
 printf '%s\n' "\$@" >> "${CALLS_FILE}"
 case "\$1" in
   network) [[ "\$2" == "inspect" ]] && exit 1; exit 0 ;;
-  inspect) exit 1 ;;
+  inspect) ${inspect_body} ;;
   *) exit 0 ;;
 esac
 STUBEOF
