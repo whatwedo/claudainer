@@ -32,6 +32,22 @@ jobs:
           podman build --platform linux/amd64 \
             -t ghcr.io/whatwedo/claudainer:latest-amd64 .
 
+      - name: Install container-structure-test
+        run: |
+          VERSION=v1.22.1
+          BASE=https://github.com/GoogleContainerTools/container-structure-test/releases/download/${VERSION}
+          curl -fsSL "${BASE}/container-structure-test-linux-amd64" -o container-structure-test
+          curl -fsSL "${BASE}/container-structure-test-linux-amd64.sha256" -o container-structure-test.sha256
+          echo "$(cat container-structure-test.sha256)  container-structure-test" | sha256sum -c -
+          chmod +x container-structure-test
+          sudo mv container-structure-test /usr/local/bin/container-structure-test
+
+      - name: Test claudainer image structure
+        run: |
+          container-structure-test test \
+            --image ghcr.io/whatwedo/claudainer:latest-amd64 \
+            --config tests/cst/claudainer.yaml
+
       - name: Build Container image (linux/arm64 for macOS)
         run: |
           podman build --platform linux/arm64 \
@@ -73,6 +89,22 @@ jobs:
         run: |
           podman build --platform linux/amd64 \
             -t ghcr.io/whatwedo/claudainer-proxy:latest-amd64 proxy/
+
+      - name: Install container-structure-test
+        run: |
+          VERSION=v1.22.1
+          BASE=https://github.com/GoogleContainerTools/container-structure-test/releases/download/${VERSION}
+          curl -fsSL "${BASE}/container-structure-test-linux-amd64" -o container-structure-test
+          curl -fsSL "${BASE}/container-structure-test-linux-amd64.sha256" -o container-structure-test.sha256
+          echo "$(cat container-structure-test.sha256)  container-structure-test" | sha256sum -c -
+          chmod +x container-structure-test
+          sudo mv container-structure-test /usr/local/bin/container-structure-test
+
+      - name: Test proxy image structure
+        run: |
+          container-structure-test test \
+            --image ghcr.io/whatwedo/claudainer-proxy:latest-amd64 \
+            --config tests/cst/proxy.yaml
 
       - name: Build proxy image (linux/arm64)
         run: |

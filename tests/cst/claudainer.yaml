@@ -1,0 +1,53 @@
+schemaVersion: '2.0.0'
+
+commandTests:
+  - name: "node v22 is installed"
+    command: "node"
+    args: ["--version"]
+    expectedOutput: ["v22\\."]
+    exitCode: 0
+
+  - name: "claude binary is installed"
+    command: "which"
+    args: ["claude"]
+    exitCode: 0
+
+  - name: "docker CLI is installed"
+    command: "docker"
+    args: ["--version"]
+    exitCode: 0
+
+  - name: "git is installed"
+    command: "git"
+    args: ["--version"]
+    exitCode: 0
+
+  - name: "curl is installed"
+    command: "curl"
+    args: ["--version"]
+    exitCode: 0
+
+  - name: "running as developer user"
+    command: "id"
+    args: ["-un"]
+    expectedOutput: ["developer"]
+
+  - name: "working directory is /workspace"
+    command: "pwd"
+    expectedOutput: ["/workspace"]
+
+  - name: "autoupdater is disabled"
+    command: "printenv"
+    args: ["CLAUDE_CODE_DISABLE_AUTOUPDATER"]
+    expectedOutput: ["1"]
+
+fileExistenceTests:
+  - name: "home directory exists"
+    path: "/home/developer"
+    shouldExist: true
+    isDirectory: true
+
+  - name: "workspace directory exists"
+    path: "/workspace"
+    shouldExist: true
+    isDirectory: true

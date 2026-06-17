@@ -1,0 +1,42 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  shell-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install BATS
+        run: sudo apt-get install -y bats
+
+      - name: Run shell tests
+        run: bats tests/bats/
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+    needs: []
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install test dependencies
+        working-directory: tests/integration
+        run: npm install
+
+      - name: Run integration tests
+        working-directory: tests/integration
+        run: npm test
+        env:
+          CLAUDAINER_IMAGE: ghcr.io/whatwedo/claudainer:latest
+          CLAUDAINER_PROXY_IMAGE: ghcr.io/whatwedo/claudainer-proxy:latest
