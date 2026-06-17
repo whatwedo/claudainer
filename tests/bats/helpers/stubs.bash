@@ -11,6 +11,12 @@ teardown_stubs() {
   rm -rf "$STUB_DIR"
 }
 
+# hide_command <name>  — makes `command -v <name>` return 1, simulating absence from PATH
+hide_command() {
+  _HIDDEN_CMD="$1"
+  command() { [[ "$1 $2" == "-v $_HIDDEN_CMD" ]] && return 1; builtin command "$@"; }
+}
+
 # make_stub <name> <body>  — creates a simple stub
 make_stub() {
   printf '#!/usr/bin/env bash\n%s\n' "$2" > "$STUB_DIR/$1"
