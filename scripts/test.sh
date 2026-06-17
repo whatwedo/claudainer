@@ -4,116 +4,79 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+TMPDIR_WORK="$(mktemp -d)"
+trap 'rm -rf "$TMPDIR_WORK"' EXIT
+
 CLAUDAINER_IMAGE="${CLAUDAINER_IMAGE:-claudainer:local}"
 PROXY_IMAGE="${PROXY_IMAGE:-claudainer-proxy:local}"
-
-CR="${CONTAINER_RUNTIME:-}"
-if [[ -z "$CR" ]]; then
-  if command -v podman &>/dev/null; then
-    CR=podman
-  elif command -v docker &>/dev/null; then
-    CR=docker
-  else
-    echo "ERROR: Neither podman nor docker found" >&2
-    exit 1
-  fi
-fi
 
 log()  { printf '==> %s\n' "$*" >&2; }
 warn() { printf 'WARN: %s\n' "$*" >&2; }
 die()  { printf 'ERROR: %s\n' "$*" >&2; exit 1; }
 
 image_exists() {
-  "$CR" image inspect "$1" &>/dev/null
+  docker image inspect "$1" &>/dev/null
 }
 
-detect_socket() {
-  if [[ -n "${DOCKER_HOST:-}" ]]; then
-    echo "${DOCKER_HOST#unix://}"
+_cst_binary() {
+  local bin="$TMPDIR_WORK/container-structure-test"
+  [[ -f "$bin" ]] && { echo "$bin"; return; }
+
+  local os arch
+  os="$(uname -s | tr '[:upper:]' '[:lower:]')"
+  arch="$(uname -m)"
+  [[ "$arch" == "x86_64" ]]  && arch="amd64"
+  [[ "$arch" == "aarch64" ]] && arch="arm64"
+
+  log "Downloading container-structure-test..."
+  curl -fsSL -o "$bin" \
+    "https://github.com/GoogleContainerTools/container-structure-test/releases/download/v1.22.1/container-structure-test-${os}-${arch}"
+  chmod +x "$bin"
+  echo "$bin"
+}
+
+_cst_for_image() {
+  local image="$1" config="$2" cst="$3"
+
+  if ! image_exists "$image"; then
+    warn "Image '$image' not found, skipping $(basename "$config")"
     return 0
   fi
-  local xdg="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
-  if [[ -S "$xdg/podman/podman.sock" ]]; then echo "$xdg/podman/podman.sock"; return 0; fi
-  if [[ -S "/run/podman/podman.sock" ]];  then echo "/run/podman/podman.sock";  return 0; fi
-  if [[ -S "/var/run/docker.sock" ]];     then echo "/var/run/docker.sock";     return 0; fi
-  die "No container socket found. For podman, run: systemctl --user start podman.socket"
-}
 
-# Run a command in a container and assert exit code 0 (and optionally match output).
-_assert() {
-  local image="$1" desc="$2" pattern="$3"
-  shift 3
-  local out exit_code=0
-  out="$("$CR" run --rm "$image" "$@" 2>&1)" || exit_code=$?
-  if [[ "$exit_code" -ne 0 ]]; then
-    printf '  FAIL: %s\n' "$desc" >&2
-    return 1
-  fi
-  if [[ -n "$pattern" ]] && ! echo "$out" | grep -q "$pattern"; then
-    printf '  FAIL: %s (got: %s)\n' "$desc" "$out" >&2
-    return 1
-  fi
-  printf '  PASS: %s\n' "$desc" >&2
+  "$cst" test --image "$image" --config "$config"
 }
 
 run_build() {
   log "Building $CLAUDAINER_IMAGE..."
-  "$CR" build -t "$CLAUDAINER_IMAGE" "$REPO_ROOT"
+  docker build -f "$REPO_ROOT/Containerfile" -t "$CLAUDAINER_IMAGE" "$REPO_ROOT"
   log "Building $PROXY_IMAGE..."
-  "$CR" build -t "$PROXY_IMAGE" "$REPO_ROOT/proxy"
+  docker build -f "$REPO_ROOT/proxy/Containerfile" -t "$PROXY_IMAGE" "$REPO_ROOT/proxy"
 }
 
 run_bats() {
   log "Running BATS shell tests..."
-  "$CR" run --rm \
-    -v "$REPO_ROOT:/workspace:ro,z" \
+  docker run --rm \
+    -v "$REPO_ROOT:/workspace:ro" \
     docker.io/bats/bats:latest \
     /workspace/tests/bats/
 }
 
 run_cst() {
   log "Running container structure tests..."
-  local failed=0
+  local cst failed=0
+  cst="$(_cst_binary)"
 
-  if ! image_exists "$CLAUDAINER_IMAGE"; then
-    warn "Image '$CLAUDAINER_IMAGE' not found, skipping claudainer tests"
-  else
-    log "Testing $CLAUDAINER_IMAGE..."
-    _assert "$CLAUDAINER_IMAGE" "node v22"              "v22\."      node --version                          || failed=1
-    _assert "$CLAUDAINER_IMAGE" "claude binary"         ""           which claude                            || failed=1
-    _assert "$CLAUDAINER_IMAGE" "docker CLI"            ""           docker --version                        || failed=1
-    _assert "$CLAUDAINER_IMAGE" "git"                   ""           git --version                           || failed=1
-    _assert "$CLAUDAINER_IMAGE" "curl"                  ""           curl --version                          || failed=1
-    _assert "$CLAUDAINER_IMAGE" "user is developer"     "developer"  id -un                                  || failed=1
-    _assert "$CLAUDAINER_IMAGE" "workdir is /workspace" "/workspace" pwd                                     || failed=1
-    _assert "$CLAUDAINER_IMAGE" "autoupdater disabled"  "^1$"        printenv CLAUDE_CODE_DISABLE_AUTOUPDATER || failed=1
-    _assert "$CLAUDAINER_IMAGE" "home dir exists"       ""           test -d /home/developer                 || failed=1
-    _assert "$CLAUDAINER_IMAGE" "workspace dir exists"  ""           test -d /workspace                      || failed=1
-  fi
-
-  if ! image_exists "$PROXY_IMAGE"; then
-    warn "Image '$PROXY_IMAGE' not found, skipping proxy tests"
-  else
-    log "Testing $PROXY_IMAGE..."
-    _assert "$PROXY_IMAGE" "squid installed"  "" squid -v                     || failed=1
-    _assert "$PROXY_IMAGE" "squid binary"     "" test -f /usr/sbin/squid      || failed=1
-    _assert "$PROXY_IMAGE" "squid config"     "" test -f /etc/squid/squid.conf || failed=1
-  fi
+  _cst_for_image "$CLAUDAINER_IMAGE" "$REPO_ROOT/tests/cst/claudainer.yaml" "$cst" || failed=1
+  _cst_for_image "$PROXY_IMAGE"      "$REPO_ROOT/tests/cst/proxy.yaml"      "$cst" || failed=1
 
   [[ "$failed" -eq 0 ]] || die "CST tests failed"
 }
 
 run_integration() {
   log "Running integration tests..."
-  local socket
-  socket="$(detect_socket)"
-  local userns=()
-  [[ "$CR" == "podman" ]] && userns=(--userns=keep-id)
-
-  "$CR" run --rm \
-    "${userns[@]}" \
-    -v "$REPO_ROOT/tests/integration:/app:z" \
-    -v "$socket:/var/run/docker.sock" \
+  docker run --rm \
+    -v "$REPO_ROOT/tests/integration:/app" \
+    -v /var/run/docker.sock:/var/run/docker.sock \
     -w /app \
     --user "$(id -u):$(id -g)" \
     -e HOME=/tmp \

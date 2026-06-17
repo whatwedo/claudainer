@@ -21,13 +21,7 @@ By default `CLAUDAINER_IMAGE=claudainer:local` and `PROXY_IMAGE=claudainer-proxy
 CLAUDAINER_IMAGE=ghcr.io/whatwedo/claudainer:latest ./scripts/test.sh cst
 ```
 
-`scripts/test.sh` auto-detects `podman` or `docker`. Set `CONTAINER_RUNTIME=docker` to force one.
-
-Integration tests require a running container socket. For rootless podman:
-
-```bash
-systemctl --user start podman.socket
-```
+All test commands require Docker. Integration tests additionally need the Docker daemon socket at `/var/run/docker.sock`.
 
 ---
 
@@ -42,7 +36,7 @@ Tests the shell script logic in `source.sh` and `source.linux.sh` — runtime de
 
 ## Image structure tests
 
-Validates the built image artifact — installed binaries, working directory, user, environment variables. Runs after building, before push. Implemented as `podman run` / `docker run` assertions in `scripts/test.sh`; the yaml files in `tests/cst/` serve as reference documentation for what is tested.
+Validates the built image artifact — installed binaries, working directory, user, environment variables. Runs after building, before push. Uses `container-structure-test` with the configs in `tests/cst/`.
 
 **What's covered (`claudainer`):** node v22, claude/docker/git/curl on PATH, user `developer`, workdir `/workspace`, `CLAUDE_CODE_DISABLE_AUTOUPDATER=1`, home and workspace dirs exist
 
