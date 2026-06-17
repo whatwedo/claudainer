@@ -1,22 +1,39 @@
 # Tests
 
-Three layers of tests, each targeting a different surface.
+Three layers of tests, each targeting a different surface. No tools need to be installed on the host — everything runs inside containers via `scripts/test.sh`.
+
+## Quick start
+
+```bash
+# Build images and run all tests
+./scripts/test.sh
+
+# Or step by step
+./scripts/test.sh build       # build claudainer:local and claudainer-proxy:local
+./scripts/test.sh bats        # shell script logic (no image required)
+./scripts/test.sh cst         # image structure
+./scripts/test.sh integration # runtime behaviour
+```
+
+By default `CLAUDAINER_IMAGE=claudainer:local` and `PROXY_IMAGE=claudainer-proxy:local`. Override to test a different image:
+
+```bash
+CLAUDAINER_IMAGE=ghcr.io/whatwedo/claudainer:latest ./scripts/test.sh cst
+```
+
+`scripts/test.sh` auto-detects `podman` or `docker`. Set `CONTAINER_RUNTIME=docker` to force one.
+
+Integration tests require a running container socket. For rootless podman:
+
+```bash
+systemctl --user start podman.socket
+```
+
+---
 
 ## Shell tests (BATS)
 
-Tests the shell script logic in `source.sh` and `source.linux.sh` — runtime detection, flag parsing, argument construction — without requiring a container runtime.
-
-**Install BATS:**
-```bash
-sudo apt-get install -y bats   # Debian/Ubuntu
-npm install -g bats            # npm
-brew install bats-core         # macOS
-```
-
-**Run:**
-```bash
-bats tests/bats/
-```
+Tests the shell script logic in `source.sh` and `source.linux.sh` — runtime detection, flag parsing, argument construction — without requiring a container image to be built.
 
 **What's covered:**
 - `linux_setup.bats` — `_claudainer_setup`: podman/docker detection, user namespace args, socket args
@@ -25,26 +42,9 @@ bats tests/bats/
 
 ## Image structure tests (container-structure-test)
 
-Validates the built image artifact — installed binaries, working directory, user, environment variables. Runs after `podman build`, before push.
+Validates the built image artifact — installed binaries, working directory, user, environment variables. Runs after building, before push.
 
-**Install:**
-```bash
-VERSION=v1.22.1  # check https://github.com/GoogleContainerTools/container-structure-test/releases
-BASE=https://github.com/GoogleContainerTools/container-structure-test/releases/download/${VERSION}
-curl -fsSL "${BASE}/container-structure-test-linux-amd64" -o container-structure-test
-curl -fsSL "${BASE}/checksums.txt" -o checksums.txt
-grep "container-structure-test-linux-amd64" checksums.txt | sed 's/container-structure-test-linux-amd64/container-structure-test/' | sha256sum -c -
-chmod +x container-structure-test && sudo mv container-structure-test /usr/local/bin/container-structure-test
-```
-
-**Run:**
-```bash
-podman build -t claudainer:local .
-container-structure-test test --image claudainer:local --config tests/cst/claudainer.yaml
-
-podman build -t claudainer-proxy:local proxy/
-container-structure-test test --image claudainer-proxy:local --config tests/cst/proxy.yaml
-```
+The CST binary is downloaded and cached inside a local helper image (`claudainer-cst:local`) on first use — no host install needed.
 
 **What's covered (`claudainer.yaml`):** node v22, claude/docker/git/curl on PATH, user `developer`, workdir `/workspace`, `CLAUDE_CODE_DISABLE_AUTOUPDATER=1`
 
@@ -52,23 +52,12 @@ container-structure-test test --image claudainer-proxy:local --config tests/cst/
 
 ## Integration tests (Testcontainers)
 
-Starts real containers and verifies runtime behavior — user identity, environment variables, filesystem mounts, and proxy network connectivity. Requires Docker and a published or locally-built image.
+Starts real containers and verifies runtime behaviour — user identity, environment variables, filesystem mounts, and proxy network connectivity.
 
-**Install:**
+**Options:**
 ```bash
-cd tests/integration && npm install
-```
-
-**Run:**
-```bash
-# against the published image
-npm test
-
-# against a locally-built image
-CLAUDAINER_IMAGE=claudainer:local npm test
-
 # skip the proxy network test (needs internet access)
-SKIP_NETWORK_TESTS=1 npm test
+SKIP_NETWORK_TESTS=1 ./scripts/test.sh integration
 ```
 
 **What's covered:**

@@ -18,56 +18,40 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Podman and QEMU for multi-arch builds
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y podman qemu-user-static
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Container image (linux/amd64)
-        run: |
-          podman build --platform linux/amd64 \
-            -t ghcr.io/whatwedo/claudainer:latest-amd64 .
-
-      - name: Install container-structure-test
-        run: |
-          VERSION=v1.22.1
-          BASE=https://github.com/GoogleContainerTools/container-structure-test/releases/download/${VERSION}
-          curl -fsSL "${BASE}/container-structure-test-linux-amd64" -o container-structure-test
-          curl -fsSL "${BASE}/checksums.txt" -o checksums.txt
-          grep "container-structure-test-linux-amd64" checksums.txt | sed 's/container-structure-test-linux-amd64/container-structure-test/' | sha256sum -c -
-          chmod +x container-structure-test
-          sudo mv container-structure-test /usr/local/bin/container-structure-test
+      - name: Build claudainer image (amd64, load locally for testing)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: claudainer:local
 
       - name: Test claudainer image structure
-        run: |
-          podman save ghcr.io/whatwedo/claudainer:latest-amd64 -o /tmp/claudainer.tar
-          docker load -i /tmp/claudainer.tar
-          container-structure-test test \
-            --image ghcr.io/whatwedo/claudainer:latest-amd64 \
-            --config tests/cst/claudainer.yaml
+        run: ./scripts/test.sh cst
+        env:
+          CLAUDAINER_IMAGE: claudainer:local
+          CONTAINER_RUNTIME: docker
 
-      - name: Build Container image (linux/arm64 for macOS)
-        run: |
-          podman build --platform linux/arm64 \
-            -t ghcr.io/whatwedo/claudainer:latest-arm64 .
-
-      - name: Push platform images
-        run: |
-          podman push ghcr.io/whatwedo/claudainer:latest-amd64
-          podman push ghcr.io/whatwedo/claudainer:latest-arm64
-
-      - name: Create and push multi-arch manifest
-        run: |
-          podman manifest create ghcr.io/whatwedo/claudainer:latest
-          podman manifest add ghcr.io/whatwedo/claudainer:latest \
-            ghcr.io/whatwedo/claudainer:latest-amd64
-          podman manifest add ghcr.io/whatwedo/claudainer:latest \
-            ghcr.io/whatwedo/claudainer:latest-arm64
-          podman manifest push ghcr.io/whatwedo/claudainer:latest
+      - name: Build and push multi-arch manifest
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/whatwedo/claudainer:latest
 
   build-and-push-proxy:
     runs-on: ubuntu-latest
@@ -78,53 +62,37 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Podman and QEMU for multi-arch builds
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y podman qemu-user-static
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build proxy image (linux/amd64)
-        run: |
-          podman build --platform linux/amd64 \
-            -t ghcr.io/whatwedo/claudainer-proxy:latest-amd64 proxy/
-
-      - name: Install container-structure-test
-        run: |
-          VERSION=v1.22.1
-          BASE=https://github.com/GoogleContainerTools/container-structure-test/releases/download/${VERSION}
-          curl -fsSL "${BASE}/container-structure-test-linux-amd64" -o container-structure-test
-          curl -fsSL "${BASE}/checksums.txt" -o checksums.txt
-          grep "container-structure-test-linux-amd64" checksums.txt | sed 's/container-structure-test-linux-amd64/container-structure-test/' | sha256sum -c -
-          chmod +x container-structure-test
-          sudo mv container-structure-test /usr/local/bin/container-structure-test
+      - name: Build proxy image (amd64, load locally for testing)
+        uses: docker/build-push-action@v6
+        with:
+          context: proxy/
+          platforms: linux/amd64
+          load: true
+          tags: claudainer-proxy:local
 
       - name: Test proxy image structure
-        run: |
-          podman save ghcr.io/whatwedo/claudainer-proxy:latest-amd64 -o /tmp/claudainer-proxy.tar
-          docker load -i /tmp/claudainer-proxy.tar
-          container-structure-test test \
-            --image ghcr.io/whatwedo/claudainer-proxy:latest-amd64 \
-            --config tests/cst/proxy.yaml
+        run: ./scripts/test.sh cst
+        env:
+          PROXY_IMAGE: claudainer-proxy:local
+          CONTAINER_RUNTIME: docker
 
-      - name: Build proxy image (linux/arm64)
-        run: |
-          podman build --platform linux/arm64 \
-            -t ghcr.io/whatwedo/claudainer-proxy:latest-arm64 proxy/
-
-      - name: Push proxy platform images
-        run: |
-          podman push ghcr.io/whatwedo/claudainer-proxy:latest-amd64
-          podman push ghcr.io/whatwedo/claudainer-proxy:latest-arm64
-
-      - name: Create and push proxy multi-arch manifest
-        run: |
-          podman manifest create ghcr.io/whatwedo/claudainer-proxy:latest
-          podman manifest add ghcr.io/whatwedo/claudainer-proxy:latest \
-            ghcr.io/whatwedo/claudainer-proxy:latest-amd64
-          podman manifest add ghcr.io/whatwedo/claudainer-proxy:latest \
-            ghcr.io/whatwedo/claudainer-proxy:latest-arm64
-          podman manifest push ghcr.io/whatwedo/claudainer-proxy:latest
+      - name: Build and push multi-arch manifest
+        uses: docker/build-push-action@v6
+        with:
+          context: proxy/
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/whatwedo/claudainer-proxy:latest
