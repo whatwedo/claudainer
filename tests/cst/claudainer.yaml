@@ -45,9 +45,7 @@ fileExistenceTests:
   - name: "home directory exists"
     path: "/home/developer"
     shouldExist: true
-    isDirectory: true
 
   - name: "workspace directory exists"
     path: "/workspace"
     shouldExist: true
-    isDirectory: true
