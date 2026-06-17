@@ -25,6 +25,7 @@ teardown() {
 
 @test "falls back to docker when podman is absent" {
   make_stub docker "exit 0"
+  command() { case "$1 $2" in '-v podman') return 1;; *) builtin command "$@";; esac; }
   _claudainer_setup false
   [ "$_CLAUDAINER_RUNTIME" = "docker" ]
 }
@@ -57,6 +58,7 @@ teardown() {
 
 @test "sets --user flag for docker" {
   make_stub docker "exit 0"
+  command() { case "$1 $2" in '-v podman') return 1;; *) builtin command "$@";; esac; }
   _claudainer_setup false
   [ "${_CLAUDAINER_USER_ARGS[*]}" = "--user 1000:1000" ]
 }
