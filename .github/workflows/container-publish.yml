@@ -44,6 +44,8 @@ jobs:
 
       - name: Test claudainer image structure
         run: |
+          podman save ghcr.io/whatwedo/claudainer:latest-amd64 -o /tmp/claudainer.tar
+          docker load -i /tmp/claudainer.tar
           container-structure-test test \
             --image ghcr.io/whatwedo/claudainer:latest-amd64 \
             --config tests/cst/claudainer.yaml
@@ -102,6 +104,8 @@ jobs:
 
       - name: Test proxy image structure
         run: |
+          podman save ghcr.io/whatwedo/claudainer-proxy:latest-amd64 -o /tmp/claudainer-proxy.tar
+          docker load -i /tmp/claudainer-proxy.tar
           container-structure-test test \
             --image ghcr.io/whatwedo/claudainer-proxy:latest-amd64 \
             --config tests/cst/proxy.yaml
