@@ -1,24 +1,24 @@
 # Tests
 
-Three layers of tests, each targeting a different surface. No tools need to be installed on the host — everything runs inside containers via `scripts/test.sh`.
+Three layers of tests, each targeting a different surface. No tools need to be installed on the host — everything runs inside containers via `tests/bin/test.sh`.
 
 ## Quick start
 
 ```bash
 # Build images and run all tests
-./scripts/test.sh
+make test
 
 # Or step by step
-./scripts/test.sh build       # build claudainer:local and claudainer-proxy:local
-./scripts/test.sh bats        # shell script logic (no image required)
-./scripts/test.sh cst         # image structure
-./scripts/test.sh integration # runtime behaviour
+make test-build       # build claudainer:local and claudainer-proxy:local
+make test-bats        # shell script logic (no image required)
+make test-cst         # image structure
+make test-integration # runtime behaviour
 ```
 
 By default `CLAUDAINER_IMAGE=claudainer:local` and `PROXY_IMAGE=claudainer-proxy:local`. Override to test a different image:
 
 ```bash
-CLAUDAINER_IMAGE=ghcr.io/whatwedo/claudainer:latest ./scripts/test.sh cst
+CLAUDAINER_IMAGE=ghcr.io/whatwedo/claudainer:latest make test-cst
 ```
 
 All test commands require Docker. Integration tests additionally require Node.js 22+ installed on the host (they run natively, like CI).
@@ -49,7 +49,7 @@ Starts real containers and verifies runtime behaviour — user identity, environ
 **Options:**
 ```bash
 # skip the proxy network test (needs internet access)
-SKIP_NETWORK_TESTS=1 ./scripts/test.sh integration
+SKIP_NETWORK_TESTS=1 make test-integration
 ```
 
 **What's covered:**

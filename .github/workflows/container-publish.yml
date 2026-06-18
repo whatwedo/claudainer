@@ -40,7 +40,7 @@ jobs:
           tags: claudainer:local
 
       - name: Test claudainer image structure
-        run: ./scripts/test.sh cst
+        run: make test-cst
         env:
           CLAUDAINER_IMAGE: claudainer:local
 
@@ -83,7 +83,7 @@ jobs:
           tags: claudainer-proxy:local
 
       - name: Test proxy image structure
-        run: ./scripts/test.sh cst
+        run: make test-cst
         env:
           PROXY_IMAGE: claudainer-proxy:local
 
