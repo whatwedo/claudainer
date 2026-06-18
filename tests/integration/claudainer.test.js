@@ -53,8 +53,8 @@ describe('claudainer image', () => {
     assert.strictEqual(result.output.trim(), '/workspace');
   });
 
-  test('CLAUDE_CODE_DISABLE_AUTOUPDATER is set to 1', async () => {
-    const result = await container.exec(['printenv', 'CLAUDE_CODE_DISABLE_AUTOUPDATER']);
+  test('DISABLE_AUTOUPDATER is set to 1', async () => {
+    const result = await container.exec(['printenv', 'DISABLE_AUTOUPDATER']);
     assert.strictEqual(result.exitCode, 0);
     assert.strictEqual(result.output.trim(), '1');
   });

@@ -38,7 +38,7 @@ Tests the shell script logic in `source.sh` and `source.linux.sh` — runtime de
 
 Validates the built image artifact — installed binaries, working directory, user, environment variables. Runs after building, before push. Uses `container-structure-test` with the configs in `tests/cst/`.
 
-**What's covered (`claudainer`):** node v22, claude/docker/git/curl on PATH, user `developer`, workdir `/workspace`, `CLAUDE_CODE_DISABLE_AUTOUPDATER=1`, home and workspace dirs exist
+**What's covered (`claudainer`):** node v22, claude/docker/git/curl on PATH, user `developer`, workdir `/workspace`, `DISABLE_AUTOUPDATER=1`, home and workspace dirs exist
 
 **What's covered (`proxy`):** squid binary present and config file exists
 
@@ -53,5 +53,5 @@ SKIP_NETWORK_TESTS=1 make test-integration
 ```
 
 **What's covered:**
-- `claudainer.test.js` — claude binary present, node v22, docker CLI, running as `developer`, workdir `/workspace`, `CLAUDE_CODE_DISABLE_AUTOUPDATER=1`, filesystem write in `/workspace`, and `.env` masking (a `/dev/null`-masked `.env` reads empty while the host file is untouched)
+- `claudainer.test.js` — claude binary present, node v22, docker CLI, running as `developer`, workdir `/workspace`, `DISABLE_AUTOUPDATER=1`, filesystem write in `/workspace`, and `.env` masking (a `/dev/null`-masked `.env` reads empty while the host file is untouched)
 - `network.test.js` — main container reaches `claudainer-proxy:3128` over a shared network and HTTP requests are forwarded

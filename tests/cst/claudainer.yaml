@@ -38,7 +38,7 @@ commandTests:
 
   - name: "autoupdater is disabled"
     command: "printenv"
-    args: ["CLAUDE_CODE_DISABLE_AUTOUPDATER"]
+    args: ["DISABLE_AUTOUPDATER"]
     expectedOutput: ["1"]
 
 fileExistenceTests:
