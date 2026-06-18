@@ -27,13 +27,8 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Install test dependencies
-        working-directory: tests/integration
-        run: npm install
+      - name: Build images
+        run: make test-build
 
       - name: Run integration tests
-        working-directory: tests/integration
-        run: npm test
-        env:
-          CLAUDAINER_IMAGE: ghcr.io/whatwedo/claudainer:latest
-          CLAUDAINER_PROXY_IMAGE: ghcr.io/whatwedo/claudainer-proxy:latest
+        run: make test-integration
