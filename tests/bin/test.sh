@@ -50,7 +50,7 @@ run_build() {
   log "Building $CLAUDAINER_IMAGE..."
   docker build -f "$REPO_ROOT/Dockerfile" -t "$CLAUDAINER_IMAGE" "$REPO_ROOT"
   log "Building $PROXY_IMAGE..."
-  docker build -f "$REPO_ROOT/proxy/Containerfile" -t "$PROXY_IMAGE" "$REPO_ROOT/proxy"
+  docker build -f "$REPO_ROOT/proxy/Dockerfile" -t "$PROXY_IMAGE" "$REPO_ROOT/proxy"
 }
 
 run_bats() {
