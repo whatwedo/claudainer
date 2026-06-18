@@ -20,6 +20,8 @@ case "$(uname -s)" in
   *)      echo "claudainer: unsupported OS: $(uname -s)" >&2 ;;
 esac
 
+_claudainer_source source.helpers.sh
+
 unset -f _claudainer_source
 
 _claudainer_proxy_setup() {
@@ -61,21 +63,48 @@ claudainer-proxy-stop() {
   "$runtime" network rm "$network" 2>/dev/null || true
 }
 
-# Populate _CLAUDAINER_ENV_MASK_ARGS with read-only /dev/null masks for every
-# .env-style secret file under the current directory, so they read as empty
-# inside /workspace. Template files and heavy dependency dirs are skipped.
-_claudainer_env_masks() {
-  _CLAUDAINER_ENV_MASK_ARGS=()
-  local f rel
-  while IFS= read -r -d '' f; do
-    rel="${f#./}"
+# Paths excluded from /workspace when a project has no .claudainer yet. Written
+# into a freshly created .claudainer and used as an in-memory fallback if the
+# file cannot be created.
+_CLAUDAINER_DEFAULT_EXCLUDES=(.env .env.local)
+
+# Populate _CLAUDAINER_CONFIG_MASK_ARGS with read-only masks for every path
+# listed under exclude_paths in the project's .claudainer file, so they are
+# hidden from /workspace. Files read as empty (/dev/null), directories appear
+# empty (tmpfs). Creates .claudainer with the defaults if it does not exist.
+_claudainer_config_masks() {
+  _CLAUDAINER_CONFIG_MASK_ARGS=()
+
+  if [ ! -e .claudainer ]; then
+    { printf 'exclude_paths:\n'; printf '  - %s\n' "${_CLAUDAINER_DEFAULT_EXCLUDES[@]}"; } > .claudainer 2>/dev/null \
+      && echo "claudainer: created .claudainer with default exclude_paths (.env, .env.local)" >&2
+  fi
+
+  local val rel
+  local paths=()
+  if [ -f .claudainer ] && [ -r .claudainer ]; then
+    while IFS= read -r val; do
+      paths+=("$val")
+    done < <(_claudainer_yaml_list .claudainer exclude_paths)
+  else
+    paths=("${_CLAUDAINER_DEFAULT_EXCLUDES[@]}")
+  fi
+
+  # Only mask paths that actually exist: /workspace is a bind mount of the host
+  # cwd, so asking the runtime to mount over a missing target would create an
+  # empty file/dir back on the host.
+  for val in "${paths[@]}"; do
+    rel="${val#./}"; rel="${rel#/}"
     case "$rel" in
-      *.example|*.sample|*.dist|*.template) continue ;;
+      ''|..|../*|*/../*|*/..)
+        echo "claudainer: ignoring unsafe exclude_path '$val'" >&2; continue ;;
     esac
-    _CLAUDAINER_ENV_MASK_ARGS+=(-v "/dev/null:/workspace/$rel:ro")
-  done < <(find . \
-    \( -name .git -o -name node_modules -o -name vendor \) -prune -o \
-    -type f \( -name '.env' -o -name '.env.*' \) -print0)
+    if [ -d "$rel" ]; then
+      _CLAUDAINER_CONFIG_MASK_ARGS+=(--tmpfs "/workspace/$rel")
+    elif [ -e "$rel" ]; then
+      _CLAUDAINER_CONFIG_MASK_ARGS+=(-v "/dev/null:/workspace/$rel:ro")
+    fi
+  done
 }
 
 claudainer() {
@@ -83,7 +112,6 @@ claudainer() {
   local docker_flag=false
   local shell_flag=false
   local git_config_flag=false
-  local include_env_flag=false
   local claude_args=()
 
   while [ $# -gt 0 ]; do
@@ -92,7 +120,6 @@ claudainer() {
       --docker-socket|--ds) docker_flag=true; shift ;;
       --shell)  shell_flag=true; shift ;;
       --git-config|--gc) git_config_flag=true; shift ;;
-      --include-env) include_env_flag=true; shift ;;
       --)       shift; claude_args+=("$@"); break ;;
       *)        claude_args+=("$1"); shift ;;
     esac
@@ -127,12 +154,10 @@ claudainer() {
     [ -d ~/.config/git ] && git_config_args+=(-v ~/.config/git:/home/developer/.config/git:ro)
   fi
 
-  local _CLAUDAINER_ENV_MASK_ARGS=()
-  if [ "$include_env_flag" != true ]; then
-    _claudainer_env_masks
-    if [ "${#_CLAUDAINER_ENV_MASK_ARGS[@]}" -gt 0 ]; then
-      echo "claudainer: excluding $(( ${#_CLAUDAINER_ENV_MASK_ARGS[@]} / 2 )) .env file(s) from /workspace (pass --include-env to mount them)" >&2
-    fi
+  local _CLAUDAINER_CONFIG_MASK_ARGS=()
+  _claudainer_config_masks
+  if [ "${#_CLAUDAINER_CONFIG_MASK_ARGS[@]}" -gt 0 ]; then
+    echo "claudainer: excluding $(( ${#_CLAUDAINER_CONFIG_MASK_ARGS[@]} / 2 )) path(s) listed in .claudainer from /workspace" >&2
   fi
 
   "$_CLAUDAINER_RUNTIME" run --rm -it $pull_flag \
@@ -145,7 +170,7 @@ claudainer() {
     "${host_home_args[@]}" \
     "${git_config_args[@]}" \
     -v "$(pwd)":/workspace \
-    "${_CLAUDAINER_ENV_MASK_ARGS[@]}" \
+    "${_CLAUDAINER_CONFIG_MASK_ARGS[@]}" \
     -e HOME=/home/developer \
     -e TERM="${TERM:-xterm-256color}" \
     ghcr.io/whatwedo/claudainer:latest \

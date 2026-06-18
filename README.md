@@ -36,7 +36,6 @@ Run `claudainer` from any project directory. Your current directory is mounted a
 | `--docker-socket`, `--ds` | Mount the Docker socket into the container |
 | `--shell` | Start a bash shell instead of Claude Code |
 | `--git-config`, `--gc` | Mount `~/.gitconfig` and `~/.config/git/` (read-only) into the container |
-| `--include-env` | Mount real `.env` files instead of masking them (see below) |
 
 ### Examples
 
@@ -58,22 +57,43 @@ claudainer --shell
 
 # Mount git config so git identity/settings are available inside the container
 claudainer --git-config
-
-# Mount real .env files (e.g. when an app needs them at runtime)
-claudainer --include-env
 ```
 
-## Environment files
+## Project configuration (`.claudainer`)
 
-By default, `.env` and `.env.*` files in your project are **excluded** from
-`/workspace` so secrets they may contain are not exposed to the agent. Each
-matching file is masked with a read-only empty mount, so it reads as empty
-inside the container while the real file on your host is left untouched. Template
-files (`*.example`, `*.sample`, `*.dist`, `*.template`) are kept visible, and the
-scan skips `.git`, `node_modules`, and `vendor`.
+Each project can control which paths are hidden from the agent via a
+`.claudainer` file (YAML) in the project root. The first time you run
+`claudainer` in a project, the file is created automatically with sensible
+defaults:
 
-Pass `--include-env` to mount the real files instead — useful when an app or dev
-server running inside the container needs the values at runtime.
+```yaml
+exclude_paths:
+  - .env
+  - .env.local
+```
+
+Every path under `exclude_paths` is excluded from `/workspace` so secrets it may
+contain are not exposed to the agent:
+
+- **Files** are masked with a read-only empty mount, so they read as empty inside
+  the container.
+- **Directories** are mounted as an empty `tmpfs`, so their contents are hidden.
+
+In both cases the real files on your host are left untouched. Entries are
+**literal paths relative to the project root** (no wildcards), e.g.:
+
+```yaml
+exclude_paths:
+  - .env
+  - .env.local
+  - secrets/
+  - config/credentials.json
+```
+
+Edit `.claudainer` to add or remove excluded paths — to mount a real `.env` file
+(e.g. when an app or dev server inside the container needs it at runtime), simply
+remove it from the list. The `.claudainer` file itself stays visible in
+`/workspace`; commit it or add it to `.gitignore` as you prefer.
 
 ## Proxy
 

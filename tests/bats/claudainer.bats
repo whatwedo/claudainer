@@ -141,35 +141,62 @@ last_call_token() {
   assert_call_not_contains ".gitconfig"
 }
 
-# --- .env masking / --include-env flag ---
+# --- .claudainer exclude_paths masking ---
 
-@test ".env in the project is masked by default" {
+@test "creates .claudainer with default exclude_paths when absent" {
+  claudainer
+  [ -f .claudainer ]
+  grep -qF -- ".env" .claudainer
+  grep -qF -- ".env.local" .claudainer
+}
+
+@test "default .env and .env.local are masked when they exist" {
   printf 'SECRET=1\n' > .env
+  printf 'SECRET=2\n' > .env.local
   claudainer
   assert_call_contains "/dev/null:/workspace/.env:ro"
+  assert_call_contains "/dev/null:/workspace/.env.local:ro"
 }
 
-@test "nested .env is masked at its relative path" {
-  mkdir -p sub
-  printf 'SECRET=1\n' > sub/.env
+@test "a listed path that does not exist is not masked and no host file is created" {
+  # The auto-created .claudainer lists .env and .env.local, but neither exists.
   claudainer
-  assert_call_contains "/dev/null:/workspace/sub/.env:ro"
+  assert_call_not_contains "/dev/null:/workspace/.env:ro"
+  [ ! -e .env ]
+  [ ! -e .env.local ]
 }
 
-@test "--include-env disables .env masking" {
+@test "an existing .claudainer is not overwritten" {
+  printf 'exclude_paths:\n  - secret.txt\n' > .claudainer
+  printf 'SECRET=1\n' > secret.txt
   printf 'SECRET=1\n' > .env
-  claudainer --include-env
-  assert_call_not_contains "/dev/null:/workspace"
-}
-
-@test ".env.example template is not masked" {
-  printf 'SECRET=\n' > .env.example
   claudainer
-  assert_call_not_contains "/dev/null:/workspace"
+  # Custom config is preserved; defaults were not appended
+  grep -qF -- "secret.txt" .claudainer
+  ! grep -qF -- ".env.local" .claudainer
+  # secret.txt is masked, but .env (not listed) is not
+  assert_call_contains "/dev/null:/workspace/secret.txt:ro"
+  assert_call_not_contains "/dev/null:/workspace/.env:ro"
 }
 
-@test "no .env files means no masking and no error" {
+@test "a listed directory is masked via tmpfs" {
+  mkdir secrets
+  printf 'exclude_paths:\n  - secrets/\n' > .claudainer
+  claudainer
+  assert_call_contains "--tmpfs"
+  assert_call_contains "/workspace/secrets"
+}
+
+@test "quoted entries and inline comments are parsed" {
+  printf 'exclude_paths:\n  - "with space.txt"  # a comment\n' > .claudainer
+  printf 'x\n' > "with space.txt"
+  claudainer
+  assert_call_contains "/dev/null:/workspace/with space.txt:ro"
+}
+
+@test "unsafe traversal entries are ignored" {
+  printf 'exclude_paths:\n  - ../escape\n' > .claudainer
   claudainer
   assert_call_contains "run"
-  assert_call_not_contains "/dev/null:/workspace"
+  assert_call_not_contains "/workspace/../"
 }

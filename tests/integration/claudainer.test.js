@@ -1,6 +1,6 @@
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, chmodSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, chmodSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { GenericContainer } from 'testcontainers';
@@ -71,25 +71,27 @@ describe('claudainer image', () => {
   });
 });
 
-describe('.env masking', () => {
+describe('.claudainer exclude masking', () => {
   let workdir;
 
   before(() => {
-    // A host project dir containing a secret .env, made world-readable so the
-    // container's `developer` (UID 1000) user can read it regardless of the
-    // host UID that created it.
-    workdir = mkdtempSync(join(tmpdir(), 'claudainer-env-'));
+    // A host project dir containing a secret .env file and a secrets/ directory,
+    // made world-readable so the container's `developer` (UID 1000) user can
+    // read it regardless of the host UID that created it.
+    workdir = mkdtempSync(join(tmpdir(), 'claudainer-exclude-'));
     chmodSync(workdir, 0o755);
     writeFileSync(join(workdir, '.env'), 'SECRET=hunter2\n', { mode: 0o644 });
+    mkdirSync(join(workdir, 'secrets'), { mode: 0o755 });
+    writeFileSync(join(workdir, 'secrets', 'key'), 'TOP_SECRET\n', { mode: 0o644 });
   });
 
   after(() => {
     rmSync(workdir, { recursive: true, force: true });
   });
 
-  test('a /dev/null-masked .env reads empty inside the container', async () => {
-    // Mirrors what claudainer does by default: workspace mount + a read-only
-    // /dev/null mask layered over the .env file.
+  test('a /dev/null-masked file reads empty inside the container', async () => {
+    // Mirrors what claudainer does for a file listed in exclude_paths: the
+    // workspace mount + a read-only /dev/null mask layered over the file.
     const container = await new GenericContainer(IMAGE)
       .withCommand(['sleep', 'infinity'])
       .withBindMounts([
@@ -109,7 +111,27 @@ describe('.env masking', () => {
     assert.match(readFileSync(join(workdir, '.env'), 'utf8'), /SECRET=hunter2/);
   });
 
-  test('without the mask the .env content is visible (i.e. --include-env)', async () => {
+  test('a tmpfs-masked directory appears empty inside the container', async () => {
+    // Mirrors what claudainer does for a directory listed in exclude_paths: an
+    // empty tmpfs mounted over the directory hides its host contents.
+    const container = await new GenericContainer(IMAGE)
+      .withCommand(['sleep', 'infinity'])
+      .withBindMounts([{ source: workdir, target: '/workspace' }])
+      .withTmpFs({ '/workspace/secrets': 'rw' })
+      .start();
+    try {
+      const list = await container.exec(['ls', '-A', '/workspace/secrets']);
+      assert.strictEqual(list.exitCode, 0);
+      assert.strictEqual(list.output.trim(), '');
+    } finally {
+      await container.stop();
+    }
+
+    // The real directory on the host is left untouched.
+    assert.match(readFileSync(join(workdir, 'secrets', 'key'), 'utf8'), /TOP_SECRET/);
+  });
+
+  test('without a mask the content is visible (i.e. not in exclude_paths)', async () => {
     const container = await new GenericContainer(IMAGE)
       .withCommand(['sleep', 'infinity'])
       .withBindMounts([
