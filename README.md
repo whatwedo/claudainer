@@ -36,6 +36,7 @@ Run `claudainer` from any project directory. Your current directory is mounted a
 | `--docker-socket`, `--ds` | Mount the Docker socket into the container |
 | `--shell` | Start a bash shell instead of Claude Code |
 | `--git-config`, `--gc` | Mount `~/.gitconfig` and `~/.config/git/` (read-only) into the container |
+| `--include-env` | Mount real `.env` files instead of masking them (see below) |
 
 ### Examples
 
@@ -57,7 +58,22 @@ claudainer --shell
 
 # Mount git config so git identity/settings are available inside the container
 claudainer --git-config
+
+# Mount real .env files (e.g. when an app needs them at runtime)
+claudainer --include-env
 ```
+
+## Environment files
+
+By default, `.env` and `.env.*` files in your project are **excluded** from
+`/workspace` so secrets they may contain are not exposed to the agent. Each
+matching file is masked with a read-only empty mount, so it reads as empty
+inside the container while the real file on your host is left untouched. Template
+files (`*.example`, `*.sample`, `*.dist`, `*.template`) are kept visible, and the
+scan skips `.git`, `node_modules`, and `vendor`.
+
+Pass `--include-env` to mount the real files instead — useful when an app or dev
+server running inside the container needs the values at runtime.
 
 ## Proxy
 

@@ -61,11 +61,29 @@ claudainer-proxy-stop() {
   "$runtime" network rm "$network" 2>/dev/null || true
 }
 
+# Populate _CLAUDAINER_ENV_MASK_ARGS with read-only /dev/null masks for every
+# .env-style secret file under the current directory, so they read as empty
+# inside /workspace. Template files and heavy dependency dirs are skipped.
+_claudainer_env_masks() {
+  _CLAUDAINER_ENV_MASK_ARGS=()
+  local f rel
+  while IFS= read -r -d '' f; do
+    rel="${f#./}"
+    case "$rel" in
+      *.example|*.sample|*.dist|*.template) continue ;;
+    esac
+    _CLAUDAINER_ENV_MASK_ARGS+=(-v "/dev/null:/workspace/$rel:ro")
+  done < <(find . \
+    \( -name .git -o -name node_modules -o -name vendor \) -prune -o \
+    -type f \( -name '.env' -o -name '.env.*' \) -print0)
+}
+
 claudainer() {
   local pull_flag=""
   local docker_flag=false
   local shell_flag=false
   local git_config_flag=false
+  local include_env_flag=false
   local claude_args=()
 
   while [ $# -gt 0 ]; do
@@ -74,6 +92,7 @@ claudainer() {
       --docker-socket|--ds) docker_flag=true; shift ;;
       --shell)  shell_flag=true; shift ;;
       --git-config|--gc) git_config_flag=true; shift ;;
+      --include-env) include_env_flag=true; shift ;;
       --)       shift; claude_args+=("$@"); break ;;
       *)        claude_args+=("$1"); shift ;;
     esac
@@ -108,6 +127,14 @@ claudainer() {
     [ -d ~/.config/git ] && git_config_args+=(-v ~/.config/git:/home/developer/.config/git:ro)
   fi
 
+  local _CLAUDAINER_ENV_MASK_ARGS=()
+  if [ "$include_env_flag" != true ]; then
+    _claudainer_env_masks
+    if [ "${#_CLAUDAINER_ENV_MASK_ARGS[@]}" -gt 0 ]; then
+      echo "claudainer: excluding $(( ${#_CLAUDAINER_ENV_MASK_ARGS[@]} / 2 )) .env file(s) from /workspace (pass --include-env to mount them)" >&2
+    fi
+  fi
+
   "$_CLAUDAINER_RUNTIME" run --rm -it $pull_flag \
     "${_CLAUDAINER_SOCKET_ARGS[@]}" \
     "${_CLAUDAINER_USER_ARGS[@]}" \
@@ -118,6 +145,7 @@ claudainer() {
     "${host_home_args[@]}" \
     "${git_config_args[@]}" \
     -v "$(pwd)":/workspace \
+    "${_CLAUDAINER_ENV_MASK_ARGS[@]}" \
     -e HOME=/home/developer \
     -e TERM="${TERM:-xterm-256color}" \
     ghcr.io/whatwedo/claudainer:latest \

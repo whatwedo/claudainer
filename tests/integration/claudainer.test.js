@@ -1,5 +1,8 @@
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, writeFileSync, readFileSync, chmodSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { GenericContainer } from 'testcontainers';
 
 const IMAGE = process.env.CLAUDAINER_IMAGE ?? 'ghcr.io/whatwedo/claudainer:latest';
@@ -65,5 +68,60 @@ describe('claudainer image', () => {
     const readResult = await container.exec(['cat', '/workspace/sentinel.txt']);
     assert.strictEqual(readResult.exitCode, 0);
     assert.match(readResult.output, /sentinel/);
+  });
+});
+
+describe('.env masking', () => {
+  let workdir;
+
+  before(() => {
+    // A host project dir containing a secret .env, made world-readable so the
+    // container's `developer` (UID 1000) user can read it regardless of the
+    // host UID that created it.
+    workdir = mkdtempSync(join(tmpdir(), 'claudainer-env-'));
+    chmodSync(workdir, 0o755);
+    writeFileSync(join(workdir, '.env'), 'SECRET=hunter2\n', { mode: 0o644 });
+  });
+
+  after(() => {
+    rmSync(workdir, { recursive: true, force: true });
+  });
+
+  test('a /dev/null-masked .env reads empty inside the container', async () => {
+    // Mirrors what claudainer does by default: workspace mount + a read-only
+    // /dev/null mask layered over the .env file.
+    const container = await new GenericContainer(IMAGE)
+      .withCommand(['sleep', 'infinity'])
+      .withBindMounts([
+        { source: workdir, target: '/workspace' },
+        { source: '/dev/null', target: '/workspace/.env', mode: 'ro' },
+      ])
+      .start();
+    try {
+      const read = await container.exec(['cat', '/workspace/.env']);
+      assert.strictEqual(read.exitCode, 0);
+      assert.strictEqual(read.output.trim(), '');
+    } finally {
+      await container.stop();
+    }
+
+    // The real file on the host is left untouched.
+    assert.match(readFileSync(join(workdir, '.env'), 'utf8'), /SECRET=hunter2/);
+  });
+
+  test('without the mask the .env content is visible (i.e. --include-env)', async () => {
+    const container = await new GenericContainer(IMAGE)
+      .withCommand(['sleep', 'infinity'])
+      .withBindMounts([
+        { source: workdir, target: '/workspace' },
+      ])
+      .start();
+    try {
+      const read = await container.exec(['cat', '/workspace/.env']);
+      assert.strictEqual(read.exitCode, 0);
+      assert.match(read.output, /SECRET=hunter2/);
+    } finally {
+      await container.stop();
+    }
   });
 });

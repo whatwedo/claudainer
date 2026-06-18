@@ -32,7 +32,7 @@ Tests the shell script logic in `source.sh` and `source.linux.sh` — runtime de
 **What's covered:**
 - `linux_setup.bats` — `_claudainer_setup`: podman/docker detection, user namespace args, socket args
 - `proxy.bats` — `_claudainer_proxy_setup` and `claudainer-proxy-stop`: network/container lifecycle, error handling
-- `claudainer.bats` — `claudainer()` flag parsing: `--pull`, `--shell`, `--docker-socket`, `--git-config`, passthrough args
+- `claudainer.bats` — `claudainer()` flag parsing: `--pull`, `--shell`, `--docker-socket`, `--git-config`, `--include-env`, passthrough args, and `.env` mask-arg construction
 
 ## Image structure tests
 
@@ -53,5 +53,5 @@ SKIP_NETWORK_TESTS=1 make test-integration
 ```
 
 **What's covered:**
-- `claudainer.test.js` — claude binary present, node v22, docker CLI, running as `developer`, workdir `/workspace`, `CLAUDE_CODE_DISABLE_AUTOUPDATER=1`, filesystem write in `/workspace`
+- `claudainer.test.js` — claude binary present, node v22, docker CLI, running as `developer`, workdir `/workspace`, `CLAUDE_CODE_DISABLE_AUTOUPDATER=1`, filesystem write in `/workspace`, and `.env` masking (a `/dev/null`-masked `.env` reads empty while the host file is untouched)
 - `network.test.js` — main container reaches `claudainer-proxy:3128` over a shared network and HTTP requests are forwarded
