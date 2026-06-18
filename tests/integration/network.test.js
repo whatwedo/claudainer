@@ -3,7 +3,7 @@
 // Skip by setting SKIP_NETWORK_TESTS=1.
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { GenericContainer, Network } from 'testcontainers';
+import { GenericContainer, Network, Wait } from 'testcontainers';
 
 const CLAUDAINER_IMAGE = process.env.CLAUDAINER_IMAGE ?? 'ghcr.io/whatwedo/claudainer:latest';
 const PROXY_IMAGE = process.env.CLAUDAINER_PROXY_IMAGE ?? 'ghcr.io/whatwedo/claudainer-proxy:latest';
@@ -15,13 +15,17 @@ describe('claudainer proxy network', { skip: SKIP }, () => {
   let mainContainer;
 
   before(async () => {
+    process.stderr.write('[network] creating network\n');
     network = await new Network().start();
 
+    process.stderr.write('[network] starting proxy container\n');
     proxyContainer = await new GenericContainer(PROXY_IMAGE)
       .withNetwork(network)
       .withNetworkAliases('claudainer-proxy')
+      .withWaitStrategy(Wait.forSuccessfulCommand('squid -k check').withStartupTimeout(15000))
       .start();
 
+    process.stderr.write('[network] starting main container\n');
     mainContainer = await new GenericContainer(CLAUDAINER_IMAGE)
       .withCommand(['sleep', 'infinity'])
       .withNetwork(network)
@@ -31,11 +35,13 @@ describe('claudainer proxy network', { skip: SKIP }, () => {
         NO_PROXY: 'localhost,127.0.0.1',
       })
       .start();
+
+    process.stderr.write('[network] before() done\n');
   });
 
   after(async () => {
-    await mainContainer?.stop({ timeout: 10000 });
-    await proxyContainer?.stop({ timeout: 10000 });
+    await mainContainer?.stop();
+    await proxyContainer?.stop();
     await network?.stop();
   });
 

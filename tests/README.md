@@ -21,7 +21,7 @@ By default `CLAUDAINER_IMAGE=claudainer:local` and `PROXY_IMAGE=claudainer-proxy
 CLAUDAINER_IMAGE=ghcr.io/whatwedo/claudainer:latest ./scripts/test.sh cst
 ```
 
-All test commands require Docker. Integration tests additionally need the Docker daemon socket at `/var/run/docker.sock`.
+All test commands require Docker. Integration tests additionally require Node.js 22+ installed on the host (they run natively, like CI).
 
 ---
 
