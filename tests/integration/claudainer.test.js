@@ -14,7 +14,7 @@ describe('claudainer image', () => {
   });
 
   after(async () => {
-    await container?.stop({ timeout: 10000 });
+    await container?.stop();
   });
 
   test('claude binary is on PATH', async () => {

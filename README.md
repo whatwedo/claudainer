@@ -87,7 +87,11 @@ The platform file detects the available container runtime, preferring `podman` o
 
 ## Testing
 
-See [tests/README.md](tests/README.md).
+```bash
+make test
+```
+
+See [tests/README.md](tests/README.md) for individual suites and options.
 
 ## Build
 

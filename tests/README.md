@@ -1,33 +1,27 @@
 # Tests
 
-Three layers of tests, each targeting a different surface. No tools need to be installed on the host — everything runs inside containers via `scripts/test.sh`.
+Three layers of tests, each targeting a different surface. No tools need to be installed on the host — everything runs inside containers via `tests/bin/test.sh`.
 
 ## Quick start
 
 ```bash
 # Build images and run all tests
-./scripts/test.sh
+make test
 
 # Or step by step
-./scripts/test.sh build       # build claudainer:local and claudainer-proxy:local
-./scripts/test.sh bats        # shell script logic (no image required)
-./scripts/test.sh cst         # image structure
-./scripts/test.sh integration # runtime behaviour
+make test-build       # build claudainer:local and claudainer-proxy:local
+make test-bats        # shell script logic (no image required)
+make test-cst         # image structure
+make test-integration # runtime behaviour
 ```
 
 By default `CLAUDAINER_IMAGE=claudainer:local` and `PROXY_IMAGE=claudainer-proxy:local`. Override to test a different image:
 
 ```bash
-CLAUDAINER_IMAGE=ghcr.io/whatwedo/claudainer:latest ./scripts/test.sh cst
+CLAUDAINER_IMAGE=ghcr.io/whatwedo/claudainer:latest make test-cst
 ```
 
-`scripts/test.sh` auto-detects `podman` or `docker`. Set `CONTAINER_RUNTIME=docker` to force one.
-
-Integration tests require a running container socket. For rootless podman:
-
-```bash
-systemctl --user start podman.socket
-```
+All test commands require Docker. Integration tests additionally require Node.js 22+ installed on the host (they run natively, like CI).
 
 ---
 
@@ -40,15 +34,13 @@ Tests the shell script logic in `source.sh` and `source.linux.sh` — runtime de
 - `proxy.bats` — `_claudainer_proxy_setup` and `claudainer-proxy-stop`: network/container lifecycle, error handling
 - `claudainer.bats` — `claudainer()` flag parsing: `--pull`, `--shell`, `--docker-socket`, `--git-config`, passthrough args
 
-## Image structure tests (container-structure-test)
+## Image structure tests
 
-Validates the built image artifact — installed binaries, working directory, user, environment variables. Runs after building, before push.
+Validates the built image artifact — installed binaries, working directory, user, environment variables. Runs after building, before push. Uses `container-structure-test` with the configs in `tests/cst/`.
 
-The CST binary is downloaded and cached inside a local helper image (`claudainer-cst:local`) on first use — no host install needed.
+**What's covered (`claudainer`):** node v22, claude/docker/git/curl on PATH, user `developer`, workdir `/workspace`, `CLAUDE_CODE_DISABLE_AUTOUPDATER=1`, home and workspace dirs exist
 
-**What's covered (`claudainer.yaml`):** node v22, claude/docker/git/curl on PATH, user `developer`, workdir `/workspace`, `CLAUDE_CODE_DISABLE_AUTOUPDATER=1`
-
-**What's covered (`proxy.yaml`):** squid binary and config file present
+**What's covered (`proxy`):** squid binary present and config file exists
 
 ## Integration tests (Testcontainers)
 
@@ -57,7 +49,7 @@ Starts real containers and verifies runtime behaviour — user identity, environ
 **Options:**
 ```bash
 # skip the proxy network test (needs internet access)
-SKIP_NETWORK_TESTS=1 ./scripts/test.sh integration
+SKIP_NETWORK_TESTS=1 make test-integration
 ```
 
 **What's covered:**
