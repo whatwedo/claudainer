@@ -16,7 +16,7 @@ jobs:
 
   integration-tests:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+    if: github.ref == 'refs/heads/main' || github.event_name == 'schedule' || github.event_name == 'pull_request'
     needs: []
     steps:
       - name: Checkout repository
