@@ -14,9 +14,13 @@ _claudainer_setup() {
   fi
 
   if [ "$_CLAUDAINER_RUNTIME" = podman ]; then
+    # User namespaces implicitly grant mount capabilities inside the container.
     _CLAUDAINER_USER_ARGS=(--userns=keep-id:uid=1000,gid=1000)
   else
-    _CLAUDAINER_USER_ARGS=(--user 1000:1000)
+    # SYS_ADMIN lets the entrypoint bind-mount masked paths inside the container
+    # without touching the host filesystem, avoiding Docker Desktop VirtioFS
+    # creating stub files when mounts are layered from the host side.
+    _CLAUDAINER_USER_ARGS=(--cap-add SYS_ADMIN)
   fi
 
   if [ "$docker_flag" = true ]; then

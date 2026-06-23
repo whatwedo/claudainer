@@ -10,6 +10,9 @@ RUN chmod +x /tmp/install.sh && /tmp/install.sh && rm /tmp/install.sh && \
 
 ENV DISABLE_AUTOUPDATER=1
 
-USER developer
+COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
 WORKDIR /workspace
-CMD ["sleep", "infinity"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["claude"]

@@ -149,14 +149,15 @@ last_call_token() {
   printf 'SECRET=1\n' > .env
   printf 'SECRET=2\n' > .env.local
   claudainer
-  assert_call_contains "/dev/null:/workspace/.env:ro"
-  assert_call_contains "/dev/null:/workspace/.env.local:ro"
+  assert_call_contains "CLAUDAINER_EXCLUDE_PATHS="
+  assert_call_contains ".env"
+  assert_call_contains ".env.local"
 }
 
 @test "a listed path that does not exist is not masked and no host file is created" {
   # The auto-created .claudainer lists .env and .env.local, but neither exists.
   claudainer
-  assert_call_not_contains "/dev/null:/workspace/.env:ro"
+  assert_call_not_contains "CLAUDAINER_EXCLUDE_PATHS="
   [ ! -e .env ]
   [ ! -e .env.local ]
 }
@@ -169,24 +170,26 @@ last_call_token() {
   # Custom config is preserved; defaults were not appended
   grep -qF -- "secret.txt" .claudainer
   ! grep -qF -- ".env.local" .claudainer
-  # secret.txt is masked, but .env (not listed) is not
-  assert_call_contains "/dev/null:/workspace/secret.txt:ro"
-  assert_call_not_contains "/dev/null:/workspace/.env:ro"
+  # secret.txt is in the exclude list; .env (not listed) is not
+  assert_call_contains "CLAUDAINER_EXCLUDE_PATHS="
+  assert_call_contains "secret.txt"
+  assert_call_not_contains ".env"
 }
 
-@test "a listed directory is masked via tmpfs" {
+@test "a listed directory is passed via CLAUDAINER_EXCLUDE_PATHS" {
   mkdir secrets
   printf 'exclude_paths:\n  - secrets/\n' > .claudainer
   claudainer
-  assert_call_contains "--tmpfs"
-  assert_call_contains "/workspace/secrets"
+  assert_call_contains "CLAUDAINER_EXCLUDE_PATHS="
+  assert_call_contains "secrets"
 }
 
 @test "quoted entries and inline comments are parsed" {
   printf 'exclude_paths:\n  - "with space.txt"  # a comment\n' > .claudainer
   printf 'x\n' > "with space.txt"
   claudainer
-  assert_call_contains "/dev/null:/workspace/with space.txt:ro"
+  assert_call_contains "CLAUDAINER_EXCLUDE_PATHS="
+  assert_call_contains "with space.txt"
 }
 
 @test "unsafe traversal entries are ignored" {
