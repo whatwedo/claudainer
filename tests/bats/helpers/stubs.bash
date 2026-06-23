@@ -25,9 +25,11 @@ make_stub() {
 
 # make_runtime_stub <name> [container_state]
 # Creates a container-runtime stub that records every call as newline-separated
-# args to $CALLS_FILE. container_state controls what `inspect` returns:
-#   absent  (default) — inspect exits 1, simulating a missing container
-#   running           — inspect exits 0, simulating a running container
+# args to $CALLS_FILE. container_state controls what `inspect` returns (matching
+# `inspect -f '{{.State.Running}}'`, which prints the running flag):
+#   absent  (default) — inspect exits 1, simulating a missing container record
+#   running           — inspect prints "true", simulating a running container
+#   exited            — inspect prints "false", simulating a stopped --rm leftover
 # Network inspect always returns 1 (missing), everything else exits 0.
 make_runtime_stub() {
   local name="$1"
@@ -35,7 +37,8 @@ make_runtime_stub() {
 
   local inspect_body
   case "$container_state" in
-    running) inspect_body='exit 0' ;;
+    running) inspect_body='echo true; exit 0' ;;
+    exited)  inspect_body='echo false; exit 0' ;;
     *)       inspect_body='exit 1' ;;
   esac
 

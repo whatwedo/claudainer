@@ -32,7 +32,7 @@ Run `claudainer` from any project directory. Your current directory is mounted a
 
 | Flag | Description |
 |------|-------------|
-| `--pull` | Always pull the latest image before running |
+| `--pull` | Pull the latest claudainer and proxy images before running |
 | `--docker-socket`, `--ds` | Mount the Docker socket into the container |
 | `--shell` | Start a bash shell instead of Claude Code |
 | `--git-config`, `--gc` | Mount `~/.gitconfig` and `~/.config/git/` (read-only) into the container |

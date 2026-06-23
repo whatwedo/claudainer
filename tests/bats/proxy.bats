@@ -73,6 +73,38 @@ teardown() {
   assert_call_not_contains "run"
 }
 
+@test "removes and restarts a stale exited proxy container" {
+  # A --rm container left behind by a host reboot lingers in "exited" state;
+  # the setup must clear it and start a fresh one rather than assume it is up.
+  make_runtime_stub podman exited
+  _claudainer_proxy_setup
+  assert_call_contains "rm"
+  assert_call_contains "run"
+  assert_call_contains "claudainer-proxy"
+}
+
+# --- _claudainer_proxy_setup: --pull ---
+
+@test "pulls the latest proxy image when pull requested" {
+  _claudainer_proxy_setup true
+  assert_call_contains "pull"
+  assert_call_contains "ghcr.io/whatwedo/claudainer-proxy:latest"
+}
+
+@test "restarts an already-running proxy when pull requested" {
+  # A healthy proxy is left running on a normal launch, but --pull must replace
+  # it so the freshly pulled image is actually picked up.
+  make_runtime_stub podman running
+  _claudainer_proxy_setup true
+  assert_call_contains "rm"
+  assert_call_contains "run"
+}
+
+@test "does not pull the proxy image without pull flag" {
+  _claudainer_proxy_setup
+  assert_call_not_contains "pull"
+}
+
 # --- claudainer-proxy-stop ---
 
 @test "proxy-stop calls stop on the proxy container" {

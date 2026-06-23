@@ -25,6 +25,7 @@ _claudainer_source source.helpers.sh
 unset -f _claudainer_source
 
 _claudainer_proxy_setup() {
+  local pull="${1:-false}"
   local network="claudainer-net"
   local container="claudainer-proxy"
   local proxy_image="ghcr.io/whatwedo/claudainer-proxy:latest"
@@ -32,7 +33,19 @@ _claudainer_proxy_setup() {
   "$_CLAUDAINER_RUNTIME" network inspect "$network" >/dev/null 2>&1 \
     || "$_CLAUDAINER_RUNTIME" network create "$network"
 
-  if ! "$_CLAUDAINER_RUNTIME" inspect "$container" >/dev/null 2>&1; then
+  # With --pull, fetch the latest proxy image and force a restart below so a
+  # currently-running proxy actually adopts the new image (it would otherwise be
+  # left untouched as "healthy").
+  [ "$pull" = true ] && "$_CLAUDAINER_RUNTIME" pull "$proxy_image"
+
+  # Check whether the proxy is actually running, not just whether a container
+  # record exists: a --rm container left behind by a host reboot/sleep lingers
+  # in "exited" state, which a plain `inspect` would treat as healthy. Clear any
+  # such stale container before (re)starting so the proxy comes back up.
+  local running
+  running="$("$_CLAUDAINER_RUNTIME" inspect -f '{{.State.Running}}' "$container" 2>/dev/null || true)"
+  if [ "$pull" = true ] || [ "$running" != "true" ]; then
+    "$_CLAUDAINER_RUNTIME" rm -f "$container" >/dev/null 2>&1 || true
     "$_CLAUDAINER_RUNTIME" run -d --rm --name "$container" \
       --network "$network" \
       "$proxy_image"
@@ -108,7 +121,7 @@ _claudainer_config_masks() {
 }
 
 claudainer() {
-  local pull_flag=""
+  local pull_flag=false
   local docker_flag=false
   local shell_flag=false
   local git_config_flag=false
@@ -116,7 +129,7 @@ claudainer() {
 
   while [ $# -gt 0 ]; do
     case "$1" in
-      --pull)   pull_flag="--pull=always"; shift ;;
+      --pull)   pull_flag=true; shift ;;
       --docker-socket|--ds) docker_flag=true; shift ;;
       --shell)  shell_flag=true; shift ;;
       --git-config|--gc) git_config_flag=true; shift ;;
@@ -129,7 +142,7 @@ claudainer() {
   mkdir -p ~/.claude
 
   _claudainer_setup "$docker_flag" || return 1
-  _claudainer_proxy_setup || return 1
+  _claudainer_proxy_setup "$pull_flag" || return 1
 
   local _CLAUDAINER_CMD=()
   if [ "$shell_flag" = true ]; then
@@ -160,7 +173,10 @@ claudainer() {
     echo "claudainer: excluding $(( ${#_CLAUDAINER_CONFIG_MASK_ARGS[@]} / 2 )) path(s) listed in .claudainer from /workspace" >&2
   fi
 
-  "$_CLAUDAINER_RUNTIME" run --rm -it $pull_flag \
+  local pull_arg=""
+  [ "$pull_flag" = true ] && pull_arg="--pull=always"
+
+  "$_CLAUDAINER_RUNTIME" run --rm -it $pull_arg \
     "${_CLAUDAINER_SOCKET_ARGS[@]}" \
     "${_CLAUDAINER_USER_ARGS[@]}" \
     "${_CLAUDAINER_NETWORK_ARGS[@]}" \
