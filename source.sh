@@ -156,6 +156,10 @@ _claudainer_config_masks() {
     fi
     [ -e "$rel" ] && _CLAUDAINER_EXCLUDE_PATHS="${_CLAUDAINER_EXCLUDE_PATHS}${rel}"$'\n'
   done
+
+  # Never leak the exit status of the last [ -e ] test: a missing final path
+  # would otherwise abort the caller under `set -e`.
+  return 0
 }
 
 claudainer() {
