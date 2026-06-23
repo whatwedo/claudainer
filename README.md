@@ -7,7 +7,7 @@ Container image that runs [Claude Code](https://claude.ai/code) as an isolated, 
 - `debian:stable-slim` base
 - user `developer` (UID 1000) with home at `/home/developer`
 - Claude Code installed globally via npm
-- Docker CLI installed (for `--docker-socket` flag support)
+- Docker CLI installed (for `--enable-docker` flag support)
 - `/workspace` as the working directory
 
 ## Setup
@@ -33,9 +33,9 @@ Run `claudainer` from any project directory. Your current directory is mounted a
 | Flag | Description |
 |------|-------------|
 | `--pull` | Pull the latest claudainer and proxy images before running |
-| `--docker-socket`, `--ds` | Mount the Docker socket into the container |
+| `--enable-docker` | Mount the Docker socket into the container |
 | `--shell` | Start a bash shell instead of Claude Code |
-| `--git-config`, `--gc` | Mount `~/.gitconfig` and `~/.config/git/` (read-only) into the container |
+| `--enable-git` | Mount `~/.gitconfig` and `~/.config/git/` (read-only) into the container |
 
 ### Examples
 
@@ -47,7 +47,7 @@ claudainer
 claudainer --dangerously-skip-permissions
 
 # Mount Docker socket (e.g. for Docker-aware tasks)
-claudainer --docker-socket
+claudainer --enable-docker
 
 # Pull latest image and start
 claudainer --pull
@@ -56,7 +56,7 @@ claudainer --pull
 claudainer --shell
 
 # Mount git config so git identity/settings are available inside the container
-claudainer --git-config
+claudainer --enable-git
 ```
 
 ## Project configuration (`.claudainer`)
@@ -119,7 +119,7 @@ claudainer-proxy-stop
 
 `source.sh` detects your OS and sources the appropriate platform file:
 
-The platform file detects the available container runtime, preferring `podman` over `docker`. With `podman` your user ID is mapped to UID 1000 inside the container via `--userns=keep-id`; with `docker` the container runs as `--user 1000:1000`. Use `--docker-socket` to mount the Docker socket.
+The platform file detects the available container runtime, preferring `podman` over `docker`. With `podman` your user ID is mapped to UID 1000 inside the container via `--userns=keep-id`; with `docker` the container runs as `--user 1000:1000`. Use `--enable-docker` to mount the Docker socket.
 
 ## Testing
 

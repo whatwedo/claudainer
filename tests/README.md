@@ -32,7 +32,7 @@ Tests the shell script logic in `source.sh` and `source.linux.sh` — runtime de
 **What's covered:**
 - `linux_setup.bats` — `_claudainer_setup`: podman/docker detection, user namespace args, socket args
 - `proxy.bats` — `_claudainer_proxy_setup` and `claudainer-proxy-stop`: network/container lifecycle, error handling
-- `claudainer.bats` — `claudainer()` flag parsing: `--pull`, `--shell`, `--docker-socket`, `--git-config`, passthrough args, and `.claudainer` exclude_paths parsing / mask-arg construction
+- `claudainer.bats` — `claudainer()` flag parsing: `--pull`, `--shell`, `--enable-docker`, `--enable-git`, passthrough args, and `.claudainer` exclude_paths parsing / mask-arg construction
 
 ## Image structure tests
 

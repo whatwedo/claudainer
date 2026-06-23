@@ -130,9 +130,9 @@ claudainer() {
   while [ $# -gt 0 ]; do
     case "$1" in
       --pull)   pull_flag=true; shift ;;
-      --docker-socket|--ds) docker_flag=true; shift ;;
+      --enable-docker) docker_flag=true; shift ;;
       --shell)  shell_flag=true; shift ;;
-      --git-config|--gc) git_config_flag=true; shift ;;
+      --enable-git) git_config_flag=true; shift ;;
       --)       shift; claude_args+=("$@"); break ;;
       *)        claude_args+=("$1"); shift ;;
     esac

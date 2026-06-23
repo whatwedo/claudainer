@@ -78,19 +78,14 @@ last_call_token() {
   [ "$(last_call_token)" = "bash" ]
 }
 
-# --- --docker-socket / --ds flag ---
+# --- --enable-docker flag ---
 
-@test "--docker-socket mounts the docker socket" {
-  claudainer --docker-socket
+@test "--enable-docker mounts the docker socket" {
+  claudainer --enable-docker
   assert_call_contains "/var/run/docker.sock"
 }
 
-@test "--ds short form mounts the docker socket" {
-  claudainer --ds
-  assert_call_contains "/var/run/docker.sock"
-}
-
-@test "without --ds no docker socket is mounted" {
+@test "without --enable-docker no docker socket is mounted" {
   claudainer
   assert_call_not_contains "/var/run/docker.sock"
 }
@@ -127,15 +122,15 @@ last_call_token() {
   assert_call_contains "HOME=/home/developer"
 }
 
-# --- --git-config / --gc flag ---
+# --- --enable-git flag ---
 
-@test "--git-config mounts gitconfig when file exists" {
+@test "--enable-git mounts gitconfig when file exists" {
   touch "$HOME/.gitconfig"
-  claudainer --git-config
+  claudainer --enable-git
   assert_call_contains ".gitconfig"
 }
 
-@test "without --git-config no gitconfig is mounted" {
+@test "without --enable-git no gitconfig is mounted" {
   touch "$HOME/.gitconfig"
   claudainer
   assert_call_not_contains ".gitconfig"
