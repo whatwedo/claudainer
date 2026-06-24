@@ -148,7 +148,9 @@ claudainer() {
   if [ "$shell_flag" = true ]; then
     _CLAUDAINER_CMD=(bash)
   else
-    _CLAUDAINER_CMD=(claude "${claude_args[@]}")
+    # Always run claude behind a PTY filter that strips terminal mouse-tracking,
+    # so terminals like macOS Terminal.app keep normal text selection/copy.
+    _CLAUDAINER_CMD=(claudainer-disable-mouse claude "${claude_args[@]}")
   fi
 
   # Mirror ~/.claude at the host's absolute home path inside the container too,

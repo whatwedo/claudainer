@@ -22,6 +22,16 @@ commandTests:
     args: ["--version"]
     exitCode: 0
 
+  - name: "script (util-linux) is available for the mouse filter"
+    command: "script"
+    args: ["--version"]
+    exitCode: 0
+
+  - name: "mouse filter wrapper is executable"
+    command: "claudainer-disable-mouse"
+    args: ["true"]
+    exitCode: 0
+
   - name: "curl is installed"
     command: "curl"
     args: ["--version"]
