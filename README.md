@@ -2,6 +2,32 @@
 
 Container image that runs [Claude Code](https://claude.ai/code) as an isolated, per-project agent.
 
+```
+    host: your project dir + ~/.claude credentials
+                          │
+                          │  claudainer
+                          ▼
+      ┌──────────────────────────────────────┐
+      │         claudainer container         │
+      │   ┌──────────────────────────────┐   │
+      │   │      Claude Code agent       │   │
+      │   └──────────────────────────────┘   │
+      │   /workspace    ← your cwd (rw)      │
+      │   ~/.claude     ← creds (ro)         │
+      │   .claudainer   ← project config     │
+      └──────────────────────────────────────┘
+                          │
+                          │  all outbound traffic
+                          ▼
+      ┌──────────────────────────────────────┐
+      │      claudainer-proxy  (Squid)       │
+      │      allow / block lists             │
+      └──────────────────────────────────────┘
+                          │
+                          ▼
+      internet  (Anthropic API, GitHub, npm, …)
+```
+
 ## What's inside
 
 - `debian:stable-slim` base
