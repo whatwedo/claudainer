@@ -1,26 +1,36 @@
 #!/usr/bin/env bash
-# Usage: source source.sh
+# Usage: source source.sh  (from your local clone — see "Setup" in README.md)
 # Provides the claudainer command in your shell.
 
-_CLAUDAINER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-_CLAUDAINER_BASE_URL="https://raw.githubusercontent.com/whatwedo/claudainer/refs/heads/main"
+# Locate this file so the platform and helper files are loaded from the clone
+# next to it, and only from there: fetching them over the network would execute
+# whatever the endpoint happens to serve in the user's shell.
+if [ -n "${BASH_SOURCE[0]:-}" ]; then
+  _CLAUDAINER_SELF="${BASH_SOURCE[0]}"
+elif [ -n "${ZSH_VERSION:-}" ]; then
+  _CLAUDAINER_SELF="${(%):-%x}"   # zsh's equivalent of BASH_SOURCE[0]
+else
+  echo "claudainer: unsupported shell — source source.sh from bash or zsh" >&2
+  return 1
+fi
+_CLAUDAINER_DIR="$(cd "$(dirname "$_CLAUDAINER_SELF")" && pwd)"
 
 _claudainer_source() {
   local file="$1"
-  if [ -f "$_CLAUDAINER_DIR/$file" ]; then
-    source "$_CLAUDAINER_DIR/$file"
-  else
-    source <(curl -fsSL "$_CLAUDAINER_BASE_URL/$file")
+  if [ ! -f "$_CLAUDAINER_DIR/$file" ]; then
+    echo "claudainer: $_CLAUDAINER_DIR/$file not found — source source.sh from a complete clone of the repository" >&2
+    return 1
   fi
+  source "$_CLAUDAINER_DIR/$file"
 }
 
 case "$(uname -s)" in
-  Darwin) _claudainer_source source.macos.sh ;;
-  Linux)  _claudainer_source source.linux.sh ;;
-  *)      echo "claudainer: unsupported OS: $(uname -s)" >&2 ;;
+  Darwin) _claudainer_source source.macos.sh || return 1 ;;
+  Linux)  _claudainer_source source.linux.sh || return 1 ;;
+  *)      echo "claudainer: unsupported OS: $(uname -s)" >&2; return 1 ;;
 esac
 
-_claudainer_source source.helpers.sh
+_claudainer_source source.helpers.sh || return 1
 
 unset -f _claudainer_source
 
@@ -193,4 +203,4 @@ claudainer() {
     "${_CLAUDAINER_CMD[@]}"
 }
 
-unset _CLAUDAINER_DIR _CLAUDAINER_BASE_URL
+unset _CLAUDAINER_DIR _CLAUDAINER_SELF

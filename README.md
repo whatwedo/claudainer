@@ -38,13 +38,32 @@ Container image that runs [Claude Code](https://claude.ai/code) as an isolated, 
 
 ## Setup
 
-Add the following to your `.bashrc` or `.zshrc`:
+Clone the repository, then source `source.sh` from your local clone:
 
 ```bash
-source <(curl -s https://raw.githubusercontent.com/whatwedo/claudainer/refs/heads/main/source.sh)
+git clone https://github.com/whatwedo/claudainer.git ~/git/whatwedo/claudainer.git
+source ~/git/whatwedo/claudainer.git/source.sh
 ```
 
-This provides the `claudainer` command in your shell.
+Any path works — `~/git/whatwedo/claudainer.git` is just an example.
+
+To get the `claudainer` command in every shell, add the `source` line to your
+`~/.bashrc` (or `~/.zshrc`):
+
+```bash
+echo 'source ~/git/whatwedo/claudainer.git/source.sh' >> ~/.bashrc
+```
+
+Keep it up to date with:
+
+```bash
+git -C ~/git/whatwedo/claudainer.git pull
+```
+
+`source.sh` is only ever loaded from your clone. Piping it in from a URL would
+run whatever that endpoint serves at that moment, unreviewed, in every new
+shell — cloning makes the code you execute reviewable and updated only when you
+ask for it.
 
 ## Usage
 
