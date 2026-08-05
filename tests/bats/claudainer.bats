@@ -100,9 +100,15 @@ last_call_token() {
 
 # --- mandatory flags always present ---
 
-@test "workspace is mounted as /workspace" {
+@test "project directory is mounted at the host cwd by default" {
   claudainer
-  assert_call_contains "/workspace"
+  assert_call_contains "$WORKDIR:$WORKDIR"
+}
+
+@test "container workdir is set to the host cwd by default" {
+  claudainer
+  assert_call_contains "-w"
+  assert_call_contains "$WORKDIR"
 }
 
 @test "HOME env var is set to /home/developer inside container" {
@@ -155,14 +161,14 @@ last_call_token() {
   printf 'SECRET=1\n' > .env
   printf 'SECRET=2\n' > .env.local
   claudainer
-  assert_call_contains "/dev/null:/workspace/.env:ro"
-  assert_call_contains "/dev/null:/workspace/.env.local:ro"
+  assert_call_contains "/dev/null:$WORKDIR/.env:ro"
+  assert_call_contains "/dev/null:$WORKDIR/.env.local:ro"
 }
 
 @test "a listed path that does not exist is not masked and no host file is created" {
   # The auto-created .claudainer lists .env and .env.local, but neither exists.
   claudainer
-  assert_call_not_contains "/dev/null:/workspace/.env:ro"
+  assert_call_not_contains "/dev/null:$WORKDIR/.env:ro"
   [ ! -e .env ]
   [ ! -e .env.local ]
 }
@@ -176,8 +182,8 @@ last_call_token() {
   grep -qF -- "secret.txt" .claudainer
   ! grep -qF -- ".env.local" .claudainer
   # secret.txt is masked, but .env (not listed) is not
-  assert_call_contains "/dev/null:/workspace/secret.txt:ro"
-  assert_call_not_contains "/dev/null:/workspace/.env:ro"
+  assert_call_contains "/dev/null:$WORKDIR/secret.txt:ro"
+  assert_call_not_contains "/dev/null:$WORKDIR/.env:ro"
 }
 
 @test "a listed directory is masked via tmpfs" {
@@ -185,19 +191,36 @@ last_call_token() {
   printf 'exclude_paths:\n  - secrets/\n' > .claudainer
   claudainer
   assert_call_contains "--tmpfs"
-  assert_call_contains "/workspace/secrets"
+  assert_call_contains "$WORKDIR/secrets"
 }
 
 @test "quoted entries and inline comments are parsed" {
   printf 'exclude_paths:\n  - "with space.txt"  # a comment\n' > .claudainer
   printf 'x\n' > "with space.txt"
   claudainer
-  assert_call_contains "/dev/null:/workspace/with space.txt:ro"
+  assert_call_contains "/dev/null:$WORKDIR/with space.txt:ro"
 }
 
 @test "unsafe traversal entries are ignored" {
   printf 'exclude_paths:\n  - ../escape\n' > .claudainer
   claudainer
   assert_call_contains "run"
-  assert_call_not_contains "/workspace/../"
+  assert_call_not_contains "$WORKDIR/../"
+}
+
+# --- .claudainer "project:" key ---
+
+@test "a .claudainer project key mounts and sets workdir under /home/developer/projects" {
+  printf 'exclude_paths:\n  - .env\nproject: whatwedo/claudainer\n' > .claudainer
+  claudainer
+  assert_call_contains "$WORKDIR:/home/developer/projects/whatwedo/claudainer"
+  assert_call_contains "/home/developer/projects/whatwedo/claudainer"
+}
+
+@test "an unsafe .claudainer project value is ignored and falls back to the default mount" {
+  printf 'project: ../escape\n' > .claudainer
+  claudainer
+  assert_call_contains "run"
+  assert_call_not_contains "/home/developer/projects"
+  assert_call_contains "$WORKDIR:$WORKDIR"
 }

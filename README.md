@@ -34,7 +34,6 @@ Container image that runs [Claude Code](https://claude.ai/code) as an isolated, 
 - user `developer` (UID 1000) with home at `/home/developer`
 - Claude Code installed globally via npm
 - Docker CLI installed
-- `/workspace` as the working directory
 
 ## Setup
 
@@ -71,7 +70,9 @@ ask for it.
 claudainer [options] [claude args]
 ```
 
-Run `claudainer` from any project directory. Your current directory is mounted as `/workspace` inside the container. Claude credentials (`~/.claude` and `~/.claude.json`) are shared from your host so login is only required once.
+Run `claudainer` from any project directory. Your current directory is mounted **at the same absolute path** inside the container (e.g. `/Users/you/code/myapp` on the host is `/Users/you/code/myapp` in the container too), and that's also where the container's working directory is set. Claude credentials (`~/.claude` and `~/.claude.json`) are shared from your host so login is only required once.
+
+Mirroring the host path (instead of a fixed `/workspace`) matters because Claude Code derives its session-storage folder under `~/.claude/projects/<slug>/` from the working directory — mirroring the real path means each project gets its own stable slug, identical to what a native (non-containerized) run would produce. That, in turn, is what lets host-side usage-tracking tools such as [CodeBurn](https://codeburn.app/) tell your projects apart. See [Usage tracking](#usage-tracking) below.
 
 ### Options
 
@@ -113,8 +114,8 @@ exclude_paths:
   - .env.local
 ```
 
-Every path under `exclude_paths` is excluded from `/workspace` so secrets it may
-contain are not exposed to the agent:
+Every path under `exclude_paths` is excluded from the project directory inside
+the container so secrets it may contain are not exposed to the agent:
 
 - **Files** are masked with a read-only empty mount, so they read as empty inside
   the container.
@@ -133,8 +134,43 @@ exclude_paths:
 
 Edit `.claudainer` to add or remove excluded paths — to mount a real `.env` file
 (e.g. when an app or dev server inside the container needs it at runtime), simply
-remove it from the list. The `.claudainer` file itself stays visible in
-`/workspace`; commit it or add it to `.gitignore` as you prefer.
+remove it from the list. The `.claudainer` file itself stays visible inside the
+container; commit it or add it to `.gitignore` as you prefer.
+
+`.claudainer` also accepts an optional `project` key — see
+[Usage tracking](#usage-tracking) below.
+
+## Usage tracking
+
+Claude Code stores its session transcripts locally under
+`~/.claude/projects/<slug>/`, where `<slug>` is derived from the working
+directory a session ran in. Third-party dashboards such as
+[CodeBurn](https://codeburn.app/) read those files directly to show token/cost
+usage per project. Because `claudainer` mirrors your project's real host path
+into the container (see [Usage](#usage) above) instead of always using a fixed
+`/workspace`, each project gets its own stable slug — the same one a native,
+non-containerized `claude` run in that directory would produce — so those
+tools can tell your projects apart.
+
+One case this doesn't cover on its own: if you check out one **git worktree
+per branch/ticket** (each living in its own directory), path-mirroring alone
+would give each worktree its own slug, fragmenting one logical project across
+many. Pin a single stable identity instead with the `project` key in
+`.claudainer`:
+
+```yaml
+project: whatwedo/claudainer
+```
+
+The project directory is then mounted (and the working directory set) at
+`/home/developer/projects/whatwedo/claudainer` inside the container, so every
+checkout produces the same slug. Because `.claudainer` is a regular file in
+your repo, committing it means every worktree of that repo picks up the same
+`project` automatically.
+
+Note that neither Claude Code nor CodeBurn track a "ticket" concept — grouping
+sessions by ticket (e.g. via the git branch each session ran on) would need a
+separate script over the raw JSONL files and isn't part of this repo today.
 
 ## Proxy
 
