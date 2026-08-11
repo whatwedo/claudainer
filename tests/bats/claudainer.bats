@@ -136,6 +136,24 @@ last_call_token() {
   assert_call_not_contains ".gitconfig"
 }
 
+# --- mouse-tracking filter (always on) ---
+
+@test "claude is always wrapped with the mouse filter" {
+  claudainer
+  assert_call_contains "claudainer-disable-mouse"
+}
+
+@test "the wrapped command is still claude" {
+  claudainer
+  [ "$(last_call_token)" = "claude" ]
+}
+
+@test "the --shell bash command is not wrapped with the mouse filter" {
+  claudainer --shell
+  assert_call_not_contains "claudainer-disable-mouse"
+  [ "$(last_call_token)" = "bash" ]
+}
+
 # --- .claudainer exclude_paths masking ---
 
 @test "creates .claudainer with default exclude_paths when absent" {

@@ -166,6 +166,8 @@ claudainer-proxy-stop
 
 The platform file detects the available container runtime, preferring `podman` over `docker`. With `podman` your user ID is mapped to UID 1000 inside the container via `--userns=keep-id`; with `docker` the container runs as `--user 1000:1000`. Use `--enable-docker` to mount the Docker socket.
 
+Claude Code always runs behind a PTY filter that strips terminal mouse-tracking sequences from its output. This keeps plain mouse selection/copy working in terminals like macOS Terminal.app, at the cost of mouse interaction inside the TUI.
+
 ## Testing
 
 ```bash
