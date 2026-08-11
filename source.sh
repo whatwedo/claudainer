@@ -91,12 +91,14 @@ claudainer-proxy-stop() {
 # file cannot be created.
 _CLAUDAINER_DEFAULT_EXCLUDES=(.env .env.local)
 
-# Populate _CLAUDAINER_CONFIG_MASK_ARGS with read-only masks for every path
-# listed under exclude_paths in the project's .claudainer file, so they are
-# hidden from /workspace. Files read as empty (/dev/null), directories appear
-# empty (tmpfs). Creates .claudainer with the defaults if it does not exist.
+# Populate _CLAUDAINER_EXCLUDE_PATHS with newline-separated relative paths from
+# the project's .claudainer exclude_paths list. The entrypoint applies the masks
+# inside the container (bind /dev/null for files, tmpfs for directories) so that
+# no host-side mounts are needed — which prevents Docker Desktop (VirtioFS) from
+# creating stub files in the project directory. Creates .claudainer with defaults
+# if it does not exist.
 _claudainer_config_masks() {
-  _CLAUDAINER_CONFIG_MASK_ARGS=()
+  _CLAUDAINER_EXCLUDE_PATHS=""
 
   if [ ! -e .claudainer ]; then
     { printf 'exclude_paths:\n'; printf '  - %s\n' "${_CLAUDAINER_DEFAULT_EXCLUDES[@]}"; } > .claudainer 2>/dev/null \
@@ -113,21 +115,18 @@ _claudainer_config_masks() {
     paths=("${_CLAUDAINER_DEFAULT_EXCLUDES[@]}")
   fi
 
-  # Only mask paths that actually exist: /workspace is a bind mount of the host
-  # cwd, so asking the runtime to mount over a missing target would create an
-  # empty file/dir back on the host.
   for val in "${paths[@]}"; do
     rel="${val#./}"; rel="${rel#/}"
     case "$rel" in
       ''|..|../*|*/../*|*/..)
         echo "claudainer: ignoring unsafe exclude_path '$val'" >&2; continue ;;
     esac
-    if [ -d "$rel" ]; then
-      _CLAUDAINER_CONFIG_MASK_ARGS+=(--tmpfs "/workspace/$rel")
-    elif [ -e "$rel" ]; then
-      _CLAUDAINER_CONFIG_MASK_ARGS+=(-v "/dev/null:/workspace/$rel:ro")
-    fi
+    [ -e "$rel" ] && _CLAUDAINER_EXCLUDE_PATHS="${_CLAUDAINER_EXCLUDE_PATHS}${rel}"$'\n'
   done
+
+  # Never leak the exit status of the last [ -e ] test: a missing final path
+  # would otherwise abort the caller under `set -e`.
+  return 0
 }
 
 claudainer() {
@@ -179,11 +178,18 @@ claudainer() {
     [ -d ~/.config/git ] && git_config_args+=(-v ~/.config/git:/home/developer/.config/git:ro)
   fi
 
-  local _CLAUDAINER_CONFIG_MASK_ARGS=()
+  local _CLAUDAINER_EXCLUDE_PATHS=""
   _claudainer_config_masks
-  if [ "${#_CLAUDAINER_CONFIG_MASK_ARGS[@]}" -gt 0 ]; then
-    echo "claudainer: excluding $(( ${#_CLAUDAINER_CONFIG_MASK_ARGS[@]} / 2 )) path(s) listed in .claudainer from /workspace" >&2
+  local _mask_count=0
+  [ -n "$_CLAUDAINER_EXCLUDE_PATHS" ] && \
+    _mask_count=$(printf '%s' "$_CLAUDAINER_EXCLUDE_PATHS" | wc -l | tr -d ' ')
+  if [ "$_mask_count" -gt 0 ]; then
+    echo "claudainer: excluding $_mask_count path(s) listed in .claudainer from /workspace" >&2
   fi
+
+  local _exclude_args=()
+  [ -n "$_CLAUDAINER_EXCLUDE_PATHS" ] && \
+    _exclude_args=(-e "CLAUDAINER_EXCLUDE_PATHS=${_CLAUDAINER_EXCLUDE_PATHS}")
 
   local pull_arg=""
   [ "$pull_flag" = true ] && pull_arg="--pull=always"
@@ -198,10 +204,10 @@ claudainer() {
     "${host_home_args[@]}" \
     "${git_config_args[@]}" \
     -v "$(pwd)":/workspace \
-    "${_CLAUDAINER_CONFIG_MASK_ARGS[@]}" \
+    "${_exclude_args[@]}" \
     -e HOME=/home/developer \
     -e TERM="${TERM:-xterm-256color}" \
-    ghcr.io/whatwedo/claudainer:latest \
+    "${CLAUDAINER_IMAGE:-ghcr.io/whatwedo/claudainer:latest}" \
     "${_CLAUDAINER_CMD[@]}"
 }
 

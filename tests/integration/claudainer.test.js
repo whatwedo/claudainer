@@ -41,8 +41,14 @@ describe('claudainer image', () => {
     assert.strictEqual(result.exitCode, 0);
   });
 
-  test('running as developer user', async () => {
-    const result = await container.exec(['id', '-un']);
+  test('the main process runs as the developer user', async () => {
+    // The image starts as root so the entrypoint can apply mount-based masks,
+    // then drops to the unprivileged developer user via `gosu developer "$@"`
+    // before exec'ing the command — so the container's main process (PID 1)
+    // ends up owned by developer. We check PID 1 rather than `id -un`, because
+    // exec() spawns a fresh process that bypasses the entrypoint and would run
+    // as the image's default user (root).
+    const result = await container.exec(['stat', '-c', '%U', '/proc/1']);
     assert.strictEqual(result.exitCode, 0);
     assert.strictEqual(result.output.trim(), 'developer');
   });

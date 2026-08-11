@@ -56,11 +56,11 @@ teardown() {
   [ "${_CLAUDAINER_USER_ARGS[*]}" = "--userns=keep-id:uid=1000,gid=1000" ]
 }
 
-@test "sets --user flag for docker" {
+@test "sets SYS_ADMIN cap for docker" {
   make_stub docker "exit 0"
   hide_command podman
   _claudainer_setup false
-  [ "${_CLAUDAINER_USER_ARGS[*]}" = "--user 1000:1000" ]
+  [ "${_CLAUDAINER_USER_ARGS[*]}" = "--cap-add SYS_ADMIN" ]
 }
 
 # --- Docker socket args ---

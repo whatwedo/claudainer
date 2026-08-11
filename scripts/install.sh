@@ -7,7 +7,8 @@ DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   ca-certificates \
   curl \
   git \
-  gnupg
+  gnupg \
+  gosu
 
 # Node.js 22
 curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
