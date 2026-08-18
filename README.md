@@ -33,7 +33,7 @@ Container image that runs [Claude Code](https://claude.ai/code) as an isolated, 
 - `debian:stable-slim` base
 - user `developer` (UID 1000) with home at `/home/developer`
 - Claude Code installed globally via npm
-- Docker CLI installed (for `--enable-docker` flag support)
+- Docker CLI installed
 - `/workspace` as the working directory
 
 ## Setup
@@ -78,7 +78,6 @@ Run `claudainer` from any project directory. Your current directory is mounted a
 | Flag | Description |
 |------|-------------|
 | `--pull` | Pull the latest claudainer and proxy images before running |
-| `--enable-docker` | Mount the Docker socket into the container |
 | `--shell` | Start a bash shell instead of Claude Code |
 | `--enable-git` | Mount `~/.gitconfig` and `~/.config/git/` (read-only) into the container |
 
@@ -90,9 +89,6 @@ claudainer
 
 # Pass arguments to claude
 claudainer --dangerously-skip-permissions
-
-# Mount Docker socket (e.g. for Docker-aware tasks)
-claudainer --enable-docker
 
 # Pull latest image and start
 claudainer --pull
@@ -164,7 +160,7 @@ claudainer-proxy-stop
 
 `source.sh` detects your OS and sources the appropriate platform file:
 
-The platform file detects the available container runtime, preferring `podman` over `docker`. With `podman` your user ID is mapped to UID 1000 inside the container via `--userns=keep-id`; with `docker` the container runs as `--user 1000:1000`. Use `--enable-docker` to mount the Docker socket.
+The platform file detects the available container runtime, preferring `podman` over `docker`. With `podman` your user ID is mapped to UID 1000 inside the container via `--userns=keep-id`; with `docker` the container runs as `--user 1000:1000`.
 
 Claude Code always runs behind a PTY filter that strips terminal mouse-tracking sequences from its output. This keeps plain mouse selection/copy working in terminals like macOS Terminal.app, at the cost of mouse interaction inside the TUI.
 

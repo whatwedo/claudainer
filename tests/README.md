@@ -30,9 +30,9 @@ All test commands require Docker. Integration tests additionally require Node.js
 Tests the shell script logic in `source.sh` and `source.linux.sh` — runtime detection, flag parsing, argument construction — without requiring a container image to be built.
 
 **What's covered:**
-- `linux_setup.bats` — `_claudainer_setup`: podman/docker detection, user namespace args, socket args
+- `linux_setup.bats` — `_claudainer_setup`: podman/docker detection, user namespace args
 - `proxy.bats` — `_claudainer_proxy_setup` and `claudainer-proxy-stop`: network/container lifecycle, error handling
-- `claudainer.bats` — `claudainer()` flag parsing: `--pull`, `--shell`, `--enable-docker`, `--enable-git`, passthrough args, the always-on mouse-tracking filter wrapper, and `.claudainer` exclude_paths parsing / mask-arg construction
+- `claudainer.bats` — `claudainer()` flag parsing: `--pull`, `--shell`, `--enable-git`, passthrough args, the always-on mouse-tracking filter wrapper, and `.claudainer` exclude_paths parsing / mask-arg construction
 
 ## Image structure tests
 

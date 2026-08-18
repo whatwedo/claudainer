@@ -132,7 +132,6 @@ _claudainer_config_masks() {
 
 claudainer() {
   local pull_flag=false
-  local docker_flag=false
   local shell_flag=false
   local git_config_flag=false
   local claude_args=()
@@ -140,7 +139,6 @@ claudainer() {
   while [ $# -gt 0 ]; do
     case "$1" in
       --pull)   pull_flag=true; shift ;;
-      --enable-docker) docker_flag=true; shift ;;
       --shell)  shell_flag=true; shift ;;
       --enable-git) git_config_flag=true; shift ;;
       --)       shift; claude_args+=("$@"); break ;;
@@ -151,7 +149,7 @@ claudainer() {
   touch ~/.claude.json 2>/dev/null || true
   mkdir -p ~/.claude
 
-  _claudainer_setup "$docker_flag" || return 1
+  _claudainer_setup || return 1
   _claudainer_proxy_setup "$pull_flag" || return 1
 
   local _CLAUDAINER_CMD=()
@@ -189,7 +187,6 @@ claudainer() {
   [ "$pull_flag" = true ] && pull_arg="--pull=always"
 
   "$_CLAUDAINER_RUNTIME" run --rm -it $pull_arg \
-    "${_CLAUDAINER_SOCKET_ARGS[@]}" \
     "${_CLAUDAINER_USER_ARGS[@]}" \
     "${_CLAUDAINER_NETWORK_ARGS[@]}" \
     "${_CLAUDAINER_PROXY_ARGS[@]}" \

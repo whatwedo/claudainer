@@ -31,7 +31,7 @@ teardown() {
   teardown_stubs
   cd /
   rm -rf "$HOME" "$WORKDIR"
-  unset _CLAUDAINER_RUNTIME _CLAUDAINER_USER_ARGS _CLAUDAINER_SOCKET_ARGS
+  unset _CLAUDAINER_RUNTIME _CLAUDAINER_USER_ARGS
   unset _CLAUDAINER_NETWORK_ARGS _CLAUDAINER_PROXY_ARGS
 }
 
@@ -76,18 +76,6 @@ last_call_token() {
 @test "--shell final token is bash not claude" {
   claudainer --shell
   [ "$(last_call_token)" = "bash" ]
-}
-
-# --- --enable-docker flag ---
-
-@test "--enable-docker mounts the docker socket" {
-  claudainer --enable-docker
-  assert_call_contains "/var/run/docker.sock"
-}
-
-@test "without --enable-docker no docker socket is mounted" {
-  claudainer
-  assert_call_not_contains "/var/run/docker.sock"
 }
 
 # --- passthrough args after -- ---
