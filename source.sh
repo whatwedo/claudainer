@@ -86,22 +86,56 @@ claudainer-proxy-stop() {
   "$runtime" network rm "$network" 2>/dev/null || true
 }
 
-# Paths excluded from /workspace when a project has no .claudainer yet. Written
-# into a freshly created .claudainer and used as an in-memory fallback if the
-# file cannot be created.
+# Paths excluded from the project directory when a project has no .claudainer
+# yet. Written into a freshly created .claudainer and used as an in-memory
+# fallback if the file cannot be created.
 _CLAUDAINER_DEFAULT_EXCLUDES=(.env .env.local)
 
-# Populate _CLAUDAINER_CONFIG_MASK_ARGS with read-only masks for every path
-# listed under exclude_paths in the project's .claudainer file, so they are
-# hidden from /workspace. Files read as empty (/dev/null), directories appear
-# empty (tmpfs). Creates .claudainer with the defaults if it does not exist.
-_claudainer_config_masks() {
-  _CLAUDAINER_CONFIG_MASK_ARGS=()
+# _claudainer_is_unsafe_path <path>
+# True if <path> is empty or could escape the directory it gets joined under
+# (a literal ".." component). Shared by exclude_paths masking and the
+# .claudainer "project:" validation.
+_claudainer_is_unsafe_path() {
+  case "$1" in
+    ''|..|../*|*/../*|*/..) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 
+# Create .claudainer with the default exclude_paths if it does not exist yet.
+# A no-op if the file is already present (custom or previously created).
+_claudainer_ensure_config_file() {
   if [ ! -e .claudainer ]; then
     { printf 'exclude_paths:\n'; printf '  - %s\n' "${_CLAUDAINER_DEFAULT_EXCLUDES[@]}"; } > .claudainer 2>/dev/null \
       && echo "claudainer: created .claudainer with default exclude_paths (.env, .env.local)" >&2
   fi
+}
+
+# Resolve the logical project name used to build a stable container path
+# (instead of mirroring the host's own directory) from the .claudainer
+# "project:" key. Empty means: mirror the host path — see claudainer().
+# Sets _CLAUDAINER_PROJECT_NAME. Assumes .claudainer already exists (call
+# _claudainer_ensure_config_file first).
+_claudainer_resolve_project() {
+  local name=""
+  [ -f .claudainer ] && [ -r .claudainer ] && name="$(_claudainer_yaml_scalar .claudainer project)"
+
+  name="${name#/}"
+  if [ -n "$name" ] && _claudainer_is_unsafe_path "$name"; then
+    echo "claudainer: ignoring unsafe '.claudainer' project value '$name'" >&2
+    name=""
+  fi
+  _CLAUDAINER_PROJECT_NAME="$name"
+}
+
+# Populate _CLAUDAINER_CONFIG_MASK_ARGS with read-only masks for every path
+# listed under exclude_paths in the project's .claudainer file, rooted at
+# <container_workdir>. Files read as empty (/dev/null), directories appear
+# empty (tmpfs). Assumes .claudainer already exists (call
+# _claudainer_ensure_config_file first).
+_claudainer_config_masks() {
+  local container_workdir="$1"
+  _CLAUDAINER_CONFIG_MASK_ARGS=()
 
   local val rel
   local paths=()
@@ -113,19 +147,18 @@ _claudainer_config_masks() {
     paths=("${_CLAUDAINER_DEFAULT_EXCLUDES[@]}")
   fi
 
-  # Only mask paths that actually exist: /workspace is a bind mount of the host
-  # cwd, so asking the runtime to mount over a missing target would create an
-  # empty file/dir back on the host.
+  # Only mask paths that actually exist: the project directory is a bind mount
+  # of the host cwd, so asking the runtime to mount over a missing target
+  # would create an empty file/dir back on the host.
   for val in "${paths[@]}"; do
     rel="${val#./}"; rel="${rel#/}"
-    case "$rel" in
-      ''|..|../*|*/../*|*/..)
-        echo "claudainer: ignoring unsafe exclude_path '$val'" >&2; continue ;;
-    esac
+    if _claudainer_is_unsafe_path "$rel"; then
+      echo "claudainer: ignoring unsafe exclude_path '$val'" >&2; continue
+    fi
     if [ -d "$rel" ]; then
-      _CLAUDAINER_CONFIG_MASK_ARGS+=(--tmpfs "/workspace/$rel")
+      _CLAUDAINER_CONFIG_MASK_ARGS+=(--tmpfs "$container_workdir/$rel")
     elif [ -e "$rel" ]; then
-      _CLAUDAINER_CONFIG_MASK_ARGS+=(-v "/dev/null:/workspace/$rel:ro")
+      _CLAUDAINER_CONFIG_MASK_ARGS+=(-v "/dev/null:$container_workdir/$rel:ro")
     fi
   done
 }
@@ -177,10 +210,25 @@ claudainer() {
     [ -d ~/.config/git ] && git_config_args+=(-v ~/.config/git:/home/developer/.config/git:ro)
   fi
 
+  _claudainer_ensure_config_file
+
+  # Resolve where the project is mounted/worked from inside the container.
+  # Default: mirror the host's absolute cwd, so Claude Code's session-storage
+  # slug (~/.claude/projects/<slug>) matches what a native run would produce
+  # and distinct projects don't collide under a single fixed "/workspace"
+  # slug. Set the .claudainer "project:" key when several checkouts of the
+  # same project — e.g. git worktrees — should share one stable slug instead
+  # of fragmenting into one per checkout directory.
+  local host_cwd="$(pwd)"
+  local _CLAUDAINER_PROJECT_NAME=""
+  _claudainer_resolve_project
+  local container_workdir="$host_cwd"
+  [ -n "$_CLAUDAINER_PROJECT_NAME" ] && container_workdir="/home/developer/projects/$_CLAUDAINER_PROJECT_NAME"
+
   local _CLAUDAINER_CONFIG_MASK_ARGS=()
-  _claudainer_config_masks
+  _claudainer_config_masks "$container_workdir"
   if [ "${#_CLAUDAINER_CONFIG_MASK_ARGS[@]}" -gt 0 ]; then
-    echo "claudainer: excluding $(( ${#_CLAUDAINER_CONFIG_MASK_ARGS[@]} / 2 )) path(s) listed in .claudainer from /workspace" >&2
+    echo "claudainer: excluding $(( ${#_CLAUDAINER_CONFIG_MASK_ARGS[@]} / 2 )) path(s) listed in .claudainer from the project directory" >&2
   fi
 
   local pull_arg=""
@@ -194,7 +242,8 @@ claudainer() {
     -v ~/.claude.json:/home/developer/.claude.json \
     "${host_home_args[@]}" \
     "${git_config_args[@]}" \
-    -v "$(pwd)":/workspace \
+    -v "$host_cwd":"$container_workdir" \
+    -w "$container_workdir" \
     "${_CLAUDAINER_CONFIG_MASK_ARGS[@]}" \
     -e HOME=/home/developer \
     -e TERM="${TERM:-xterm-256color}" \
