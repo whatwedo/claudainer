@@ -128,14 +128,14 @@ _claudainer_resolve_project() {
   _CLAUDAINER_PROJECT_NAME="$name"
 }
 
-# Populate _CLAUDAINER_CONFIG_MASK_ARGS with read-only masks for every path
-# listed under exclude_paths in the project's .claudainer file, rooted at
-# <container_workdir>. Files read as empty (/dev/null), directories appear
-# empty (tmpfs). Assumes .claudainer already exists (call
-# _claudainer_ensure_config_file first).
+# Populate _CLAUDAINER_EXCLUDE_PATHS with newline-separated relative paths from
+# the project's .claudainer exclude_paths list. The entrypoint applies the masks
+# inside the container (bind /dev/null for files, tmpfs for directories) so that
+# no host-side mounts are needed — which prevents Docker Desktop (VirtioFS) from
+# creating stub files in the project directory. Assumes .claudainer already
+# exists (call _claudainer_ensure_config_file first).
 _claudainer_config_masks() {
-  local container_workdir="$1"
-  _CLAUDAINER_CONFIG_MASK_ARGS=()
+  _CLAUDAINER_EXCLUDE_PATHS=""
 
   local val rel
   local paths=()
@@ -147,20 +147,19 @@ _claudainer_config_masks() {
     paths=("${_CLAUDAINER_DEFAULT_EXCLUDES[@]}")
   fi
 
-  # Only mask paths that actually exist: the project directory is a bind mount
-  # of the host cwd, so asking the runtime to mount over a missing target
-  # would create an empty file/dir back on the host.
+  # Only pass paths that actually exist; the entrypoint masks them inside
+  # the container so no host-side mount can create stub files on the host.
   for val in "${paths[@]}"; do
     rel="${val#./}"; rel="${rel#/}"
     if _claudainer_is_unsafe_path "$rel"; then
       echo "claudainer: ignoring unsafe exclude_path '$val'" >&2; continue
     fi
-    if [ -d "$rel" ]; then
-      _CLAUDAINER_CONFIG_MASK_ARGS+=(--tmpfs "$container_workdir/$rel")
-    elif [ -e "$rel" ]; then
-      _CLAUDAINER_CONFIG_MASK_ARGS+=(-v "/dev/null:$container_workdir/$rel:ro")
-    fi
+    [ -e "$rel" ] && _CLAUDAINER_EXCLUDE_PATHS="${_CLAUDAINER_EXCLUDE_PATHS}${rel}"$'\n'
   done
+
+  # Never leak the exit status of the last [ -e ] test: a missing final path
+  # would otherwise abort the caller under `set -e`.
+  return 0
 }
 
 claudainer() {
@@ -225,11 +224,18 @@ claudainer() {
   local container_workdir="$host_cwd"
   [ -n "$_CLAUDAINER_PROJECT_NAME" ] && container_workdir="/home/developer/projects/$_CLAUDAINER_PROJECT_NAME"
 
-  local _CLAUDAINER_CONFIG_MASK_ARGS=()
-  _claudainer_config_masks "$container_workdir"
-  if [ "${#_CLAUDAINER_CONFIG_MASK_ARGS[@]}" -gt 0 ]; then
-    echo "claudainer: excluding $(( ${#_CLAUDAINER_CONFIG_MASK_ARGS[@]} / 2 )) path(s) listed in .claudainer from the project directory" >&2
+  local _CLAUDAINER_EXCLUDE_PATHS=""
+  _claudainer_config_masks
+  local _mask_count=0
+  [ -n "$_CLAUDAINER_EXCLUDE_PATHS" ] && \
+    _mask_count=$(printf '%s' "$_CLAUDAINER_EXCLUDE_PATHS" | wc -l | tr -d ' ')
+  if [ "$_mask_count" -gt 0 ]; then
+    echo "claudainer: excluding $_mask_count path(s) listed in .claudainer from the project directory" >&2
   fi
+
+  local _exclude_args=()
+  [ -n "$_CLAUDAINER_EXCLUDE_PATHS" ] && \
+    _exclude_args=(-e "CLAUDAINER_EXCLUDE_PATHS=${_CLAUDAINER_EXCLUDE_PATHS}")
 
   local pull_arg=""
   [ "$pull_flag" = true ] && pull_arg="--pull=always"
@@ -244,10 +250,10 @@ claudainer() {
     "${git_config_args[@]}" \
     -v "$host_cwd":"$container_workdir" \
     -w "$container_workdir" \
-    "${_CLAUDAINER_CONFIG_MASK_ARGS[@]}" \
+    "${_exclude_args[@]}" \
     -e HOME=/home/developer \
     -e TERM="${TERM:-xterm-256color}" \
-    ghcr.io/whatwedo/claudainer:latest \
+    "${CLAUDAINER_IMAGE:-ghcr.io/whatwedo/claudainer:latest}" \
     "${_CLAUDAINER_CMD[@]}"
 }
 
