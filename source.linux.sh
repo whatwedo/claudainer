@@ -12,8 +12,11 @@ _claudainer_setup() {
   fi
 
   if [ "$_CLAUDAINER_RUNTIME" = podman ]; then
-    # User namespaces implicitly grant mount capabilities inside the container.
-    _CLAUDAINER_USER_ARGS=(--userns=keep-id:uid=1000,gid=1000)
+    # keep-id maps the host user to container uid 1000 (developer), so files
+    # written by gosu'd processes stay owned by the host user. Start as
+    # container root so the entrypoint can mount the exclude masks and then
+    # drop to developer via gosu. SYS_ADMIN is only namespaced in rootless mode.
+    _CLAUDAINER_USER_ARGS=(--userns=keep-id:uid=1000,gid=1000 --user 0:0 --cap-add SYS_ADMIN)
   else
     # SYS_ADMIN lets the entrypoint bind-mount masked paths inside the container
     # without touching the host filesystem, avoiding Docker Desktop VirtioFS
