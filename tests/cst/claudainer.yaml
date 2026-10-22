@@ -37,9 +37,9 @@ commandTests:
     args: ["--version"]
     exitCode: 0
 
-  - name: "running as developer user"
-    command: "id"
-    args: ["-un"]
+  - name: "entrypoint drops privileges to developer user"
+    command: "gosu"
+    args: ["developer", "id", "-un"]
     expectedOutput: ["developer"]
 
   - name: "working directory is /workspace"
