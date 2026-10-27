@@ -50,10 +50,10 @@ teardown() {
 
 # --- User namespace args ---
 
-@test "sets keep-id userns args for podman" {
+@test "sets keep-id userns, root user and SYS_ADMIN args for podman" {
   make_stub podman "exit 0"
   _claudainer_setup
-  [ "${_CLAUDAINER_USER_ARGS[*]}" = "--userns=keep-id:uid=1000,gid=1000" ]
+  [ "${_CLAUDAINER_USER_ARGS[*]}" = "--userns=keep-id:uid=1000,gid=1000 --user 0:0 --cap-add SYS_ADMIN" ]
 }
 
 @test "sets SYS_ADMIN cap for docker" {
